@@ -108,6 +108,33 @@ test('inserting on a wire preserves the original subtree and supports undo', asy
   assert.deepEqual((await definition(page)).query, original.query);
 });
 
+
+test('Blueprint adds and edits scoped field-to-field comparisons without changing the parent entity', async t => {
+  const page = await openShowcase(t);
+  const original = await definition(page);
+  await page.getByRole('button', { name: /Open Tasks\.ANY subgraph/i }).click();
+  assert.match(await page.locator('.blueprint-scope').textContent(), /Predicate<Task>/);
+  await page.locator('.blueprint-palette-select').selectOption({ label: 'Compare two fields' });
+  await page.locator('.blueprint-palette').getByRole('button', { name: /Add condition/ }).click();
+  let query = await definition(page);
+  const expressions = query.query.expressions[2].expression.expressions;
+  const added = expressions.at(-1);
+  assert.equal(added.type, 'fieldComparison');
+  assert.equal(added.leftField, 'Id');
+  assert.equal(added.rightField, 'ProjectId');
+  assert.equal(query.entity, 'Project');
+
+  const card = page.locator('.blueprint-card').filter({ hasText: 'Id equals ProjectId' }).first();
+  await card.getByRole('button', { name: /Edit Id equals ProjectId/ }).click();
+  await page.getByRole('region', { name: 'Edit selected predicate' }).getByText('Operator').waitFor();
+  await page.locator('.blueprint-inline-inspector').getByRole('combobox').last().selectOption('greaterThan');
+  query = await definition(page);
+  assert.equal(query.query.expressions[2].expression.expressions.at(-1).operator, 'greaterThan');
+  await page.locator('#undo-edit').click();
+  await page.locator('#undo-edit').click();
+  assert.deepEqual((await definition(page)).query, original.query);
+});
+
 test('mobile viewport and keyboard node move remain operable', async t => {
   const page = await openShowcase(t, { width: 390, height: 844 });
   const before = await definition(page);
