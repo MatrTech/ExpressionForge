@@ -15,7 +15,12 @@ public sealed record QueryDefinition
 [JsonDerivedType(typeof(GroupExpression), "group")]
 [JsonDerivedType(typeof(CollectionExpression), "collectionExpression")]
 [JsonDerivedType(typeof(NotExpression), "not")]
-public abstract record QueryExpression;
+public abstract record QueryExpression
+{
+    // Stable editor identity; not part of query semantics or SQL compilation.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Id { get; init; }
+}
 
 public sealed record ComparisonExpression : QueryExpression
 {
