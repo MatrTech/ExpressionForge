@@ -155,6 +155,34 @@ test('Blueprint creates an arithmetic predicate and edits its calculation withou
   assert.deepEqual((await definition(page)).query, original.query);
 });
 
+test('Blueprint edits safe division and runtime numeric bindings without changing the saved AST', async t => {
+  const page = await openShowcase(t);
+  await page.locator('.blueprint-palette-select').selectOption({ label: 'Calculate with fields' });
+  await page.locator('.blueprint-palette').getByRole('button', { name: /Add condition/ }).click();
+
+  const card = page.locator('.blueprint-arithmeticComparison').last();
+  await card.locator('.blueprint-expand').click();
+  await page.locator('.blueprint-inline-inspector').getByRole('combobox')
+    .filter({ has: page.locator('option[value="divide"]') }).selectOption('divide');
+  assert.equal((await definition(page)).query.expressions.at(-1).left.operator, 'divide');
+
+  await card.locator('.blueprint-expand').click();
+  await page.locator('.blueprint-inline-inspector').getByRole('combobox', { name: 'Operand source' })
+    .selectOption('parameter');
+  assert.equal((await definition(page)).query.expressions.at(-1).left.right.type, 'numericParameter');
+  await page.locator('#binding-numeric1').fill('0');
+  assert.deepEqual((await definition(page)).query.expressions.at(-1).left.right,
+    { type: 'numericParameter', parameter: 'numeric1' });
+
+  await card.locator('.blueprint-expand').click();
+  await page.locator('.blueprint-inline-inspector').getByRole('textbox', { name: 'Operand parameter name' })
+    .fill('divisor');
+  await page.locator('.blueprint-inline-inspector').getByRole('textbox', { name: 'Operand parameter name' })
+    .press('Tab');
+  assert.equal((await definition(page)).query.expressions.at(-1).left.right.parameter, 'divisor');
+  assert.equal(await page.locator('#binding-divisor').count(), 1);
+});
+
 test('mobile viewport and keyboard node move remain operable', async t => {
   const page = await openShowcase(t, { width: 390, height: 844 });
   const before = await definition(page);
