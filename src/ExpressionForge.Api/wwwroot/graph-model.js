@@ -8,7 +8,7 @@
 
   const clone = value => JSON.parse(JSON.stringify(value));
   const predicate = (entityId, cardinality = 'single') => ({ kind: 'predicate', entityId, cardinality });
-  const supported = new Set(['expression', 'group', 'collectionExpression', 'not']);
+  const supported = new Set(['expression', 'fieldComparison', 'group', 'collectionExpression', 'not']);
 
   function project(definition, catalog, options = {}) {
     if (!definition || !definition.query || !catalog || !Array.isArray(catalog.entities))
@@ -177,7 +177,7 @@
         expression.expression = inputs(graph, node.key, 'single')[0];
       else if (node.kind === 'collectionExpression')
         expression.expression = childGraph(node, 'single')[0];
-      else if (node.kind !== 'expression')
+      else if (!['expression', 'fieldComparison'].includes(node.kind))
         throw new Error('Unsupported visual node type.');
       return expression;
     }
