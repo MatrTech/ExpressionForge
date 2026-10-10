@@ -50,6 +50,7 @@
     await until(() => {
       try {
         return JSON.parse(json.value).query.id === 'project-root' &&
+          document.getElementById('node-count').textContent === '7 nodes' &&
           document.getElementById('connection').textContent.includes('Catalog projects');
       } catch { return false; }
     });
