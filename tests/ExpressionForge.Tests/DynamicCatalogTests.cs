@@ -101,6 +101,65 @@ public sealed class DynamicCatalogTests
     }
 
     [TestMethod]
+    public void Load_DateFieldsWithoutScalarOperators_EnablesMetadataSafeDateDifferences()
+    {
+        var json = ReadCatalog();
+        var fields = json["entities"]![1]!["properties"]!.AsArray();
+        foreach (var id in new[] { "StartedAt", "FinishedAt" })
+            fields.Add(new JsonObject
+            {
+                ["id"] = id, ["displayName"] = id, ["dataType"] = "date", ["nullable"] = true,
+                ["operators"] = new JsonArray()
+            });
+        var catalog = QueryCatalogFile.LoadJson(json.ToJsonString());
+        Assert.AreEqual("date", catalog.FindEntity("Task")!.Properties.Single(p => p.Id == "StartedAt").DataType);
+        Assert.AreEqual(0, catalog.FindEntity("Task")!.Properties.Single(p => p.Id == "StartedAt").Operators.Count);
+        var query = new QueryDefinition
+        {
+            Entity = "Project",
+            Query = new CollectionExpression
+            {
+                Collection = "Tasks", Quantifier = "any",
+                Expression = new ArithmeticComparisonExpression
+                {
+                    Left = new DateDiffDaysExpression { StartField = "StartedAt", EndField = "FinishedAt" },
+                    Operator = "greaterThan",
+                    Right = new NumericLiteralExpression { Value = JsonSerializer.SerializeToElement(7) }
+                }
+            }
+        };
+        var validator = new QueryValidator(catalog);
+        Assert.IsTrue(validator.Validate(query).IsValid);
+        var plan = new SqlServerQueryCompiler(catalog, validator).Compile(query);
+        StringAssert.Contains(plan.Sql, "DATEDIFF(day, [t1].[StartedAt], [t1].[FinishedAt])");
+    }
+
+    [TestMethod]
+    public void Load_DateTimeFieldsAreAllowedButUnimplementedScalarOperatorsAreRejected()
+    {
+        var json = ReadCatalog();
+        var fields = json["entities"]![1]!["properties"]!.AsArray();
+        fields.Add(new JsonObject
+        {
+            ["id"] = "RecordedAt", ["displayName"] = "Recorded", ["dataType"] = "dateTime",
+            ["nullable"] = true, ["operators"] = new JsonArray()
+        });
+        Assert.IsNotNull(QueryCatalogFile.LoadJson(json.ToJsonString()).FindEntity("Task"));
+        fields[^1]!["operators"] = JsonSerializer.SerializeToNode(new[] { "equals" });
+        StringAssert.Contains(Assert.ThrowsException<InvalidOperationException>(() =>
+            QueryCatalogFile.LoadJson(json.ToJsonString())).Message, "not registered");
+    }
+
+    [TestMethod]
+    public void Load_NonDateFieldsStillRequireAtLeastOneRegisteredOperator()
+    {
+        var json = ReadCatalog();
+        json["entities"]![0]!["properties"]![0]!["operators"] = new JsonArray();
+        StringAssert.Contains(Assert.ThrowsException<InvalidOperationException>(() =>
+            QueryCatalogFile.LoadJson(json.ToJsonString())).Message, "distinct operators");
+    }
+
+    [TestMethod]
     public void Build_AfterSourceListMutation_PreservesRegisteredSnapshot()
     {
         var fields = new List<PropertyMetadata> { new("Id", "ID", "integer", false, ["equals"]) };
