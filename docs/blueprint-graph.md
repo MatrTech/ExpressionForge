@@ -98,3 +98,18 @@ A v1 query expression remains an AST tree. Nodes do not become independent execu
 ### Remaining acceptance gates
 
 Browser-level drag/keyboard/viewport integration and accessibility tests, richer operation examples on Pages, and full v0.4.0 release validation remain future work.
+
+
+## Increment 5 — Live Pages preview & Chromium acceptance
+
+- GitHub Pages publishes [the actual Blueprint editor](https://matrtech.github.io/ExpressionForge/blueprint.html) using the exact `app.js` and graph/metadata modules shipped with the .NET web app. The deployment build copies the canonical files; tests enforce byte-for-byte parity.
+- The browser demo loads the checked-in Project/Task catalog and query fixture. It does not emulate a SQL compiler or claim to provide live backend authorization, validation, or query execution. Those buttons are disabled in the static demo.
+- Dedicated Chromium acceptance tests use Playwright to exercise boot, guided Add Condition, undo/redo, node dragging, keyboard movement, mobile viewport, collection subgraph navigation and insertion on a connection.
+- CI also starts the actual .NET API and checks that the editor can request and receive real parameterized SQL compilation, while the existing Testcontainers suite tests SQL Server semantics.
+- On the static showcase all editing operates locally in the browser. Canonical JSON stays separate from local layout and runtime parameter state.
+
+### Browser development checks
+
+Run `node scripts/prepare-blueprint-demo.cjs`, then serve `site/` using a local static HTTP server. For browser acceptance run `node --test tests/ExpressionForge.Browser.Tests/*.test.cjs` with Playwright/Chromium installed and the .NET API running on `127.0.0.1:5054`. The CI pipeline configures both servers and browsers automatically.
+
+This is a **development preview** until all CI checks pass and the release is explicitly tagged; GitHub Pages cannot replace the .NET compiler for real SQL.

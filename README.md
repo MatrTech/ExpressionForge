@@ -2,11 +2,13 @@
 
 **Project website:** https://matrtech.github.io/ExpressionForge/ · [Website source](site/) · [Deployment notes](docs/PAGES.md)
 
+**Try the browser Blueprint editor:** https://matrtech.github.io/ExpressionForge/blueprint.html — edit the real Project/Task AST directly, without installing .NET. Validation, SQL generation and data preview require the .NET API.
+
 **Build queries visually. Validate them structurally. Compile them safely.**
 
 ExpressionForge is a .NET 10 metadata-driven expression engine with a Blueprint-inspired web editor. Users compose nested predicates using blocks. The frontend discovers fields, relationships and operators from the backend, then sends a provider-independent JSON expression tree (AST) for validation and SQL Server compilation.
 
-> **Version 0.2.0 — expression correctness preview.** The editor supports nested expression trees, stable node IDs, typed runtime bindings and parameterized SQL Server compilation. Real SQL Server integration tests cover collection and NULL semantics. A freely movable Blueprint canvas, dynamic metadata, projections and other providers are future milestones.
+> **Published version 0.2.0 — expression correctness preview.** Development on `main` includes a metadata-driven Blueprint editor with movable nodes, typed subgraphs, AST editing and undo/redo toward v0.4.0. Browser acceptance and final release validation are in progress. The published package version has not been advanced yet.
 
 ## Try it
 
