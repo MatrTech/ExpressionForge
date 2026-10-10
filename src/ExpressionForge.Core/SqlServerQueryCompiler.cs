@@ -37,12 +37,28 @@ public sealed class SqlServerQueryCompiler(QueryCatalog catalog, QueryValidator 
     private string BuildPredicate(QueryExpression expression, EntityMetadata entity, string alias, CompilationState state) => expression switch
     {
         ComparisonExpression comparison => BuildComparison(comparison, entity, alias, state),
+        FieldComparisonExpression comparison => BuildFieldComparison(comparison, entity, alias),
         GroupExpression group => "(" + string.Join(group.Operator == "and" ? " AND " : " OR ",
             group.Expressions.Select(child => BuildPredicate(child, entity, alias, state))) + ")",
         CollectionExpression collection => BuildCollection(collection, entity, alias, state),
         NotExpression not => $"(NOT ({BuildPredicate(not.Expression, entity, alias, state)}))",
         _ => throw new NotSupportedException("Unexpected expression type.")
     };
+
+    private static string BuildFieldComparison(FieldComparisonExpression expression, EntityMetadata entity, string alias)
+    {
+        // Both identifiers and the operator have already been approved against the scoped catalog.
+        var left = entity.Properties.Single(p => p.Id == expression.LeftField);
+        var right = entity.Properties.Single(p => p.Id == expression.RightField);
+        var op = expression.Operator switch
+        {
+            "equals" => "=", "notEquals" => "<>",
+            "greaterThan" => ">", "greaterThanOrEqual" => ">=",
+            "lessThan" => "<", "lessThanOrEqual" => "<=",
+            _ => throw new NotSupportedException("Unsupported field-comparison operator.")
+        };
+        return $"([{alias}].{Quote(left.Id)} {op} [{alias}].{Quote(right.Id)})";
+    }
 
     private string BuildComparison(ComparisonExpression expression, EntityMetadata entity, string alias, CompilationState state)
     {
