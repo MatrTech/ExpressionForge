@@ -47,7 +47,9 @@ Final correctness review is complete, including diagnostic ownership, cross-type
 
 **Increment 3 — authorization-aware discovery and enforcement:** Trusted role grants restrict entities, fields and relationships consistently across metadata discovery, nested scope resolution, semantic validation, SQL SELECT projections, bound execution and preview. Protected deployments use JWT bearer authentication; a real SQL Server 2022 test verifies returned columns. See [authorization and role grants](authorization.md).
 
-**Next increment:** Extensible metadata sources and frontend catalog switching. Dynamic operator implementations, introspection and hot reload remain out of scope for this milestone. Dynamic operator implementations, introspection and hot reload remain out of scope for this increment. Keep the [GitHub Pages example gallery](https://matrtech.github.io/ExpressionForge/#examples) updated with examples that are also exercised by .NET and SQL Server tests.
+**Increment 4 — multiple catalog providers and editor switching:** Register multiple named domain catalogs through a trusted manifest and pluggable `IQueryCatalogSource` implementations. Route AST v1 definitions via optional `catalogId`, preserve isolated editor drafts, offer scoped discovery, and reject mixed public/protected configurations. Preserve legacy default-catalog queries. See [catalog registry](catalog-registry.md).
+
+**Release assessment:** After green .NET, editor, site and SQL Server checks, review the complete 0.3.0 acceptance criteria and prepare its independently verified release. Arbitrary SQL operators, live database introspection and hot reload remain out of scope. Keep the [GitHub Pages examples](https://matrtech.github.io/ExpressionForge/#examples) verified. Keep the [GitHub Pages example gallery](https://matrtech.github.io/ExpressionForge/#examples) updated with examples that are also exercised by .NET and SQL Server tests.
 
 ## Dependencies
 
