@@ -51,6 +51,32 @@ Final correctness review is complete, including diagnostic ownership, cross-type
 
 **Release assessment:** After green .NET, editor, site and SQL Server checks, review the complete 0.3.0 acceptance criteria and prepare its independently verified release. Arbitrary SQL operators, live database introspection and hot reload remain out of scope. Keep the [GitHub Pages examples](https://matrtech.github.io/ExpressionForge/#examples) verified. Keep the [GitHub Pages example gallery](https://matrtech.github.io/ExpressionForge/#examples) updated with examples that are also exercised by .NET and SQL Server tests.
 
+## v0.5.0 — Value expressions (incremental delivery)
+
+**Increment 1 — metadata-safe field comparisons:** Add the `fieldComparison` predicate to JSON AST v1, with `leftField`, `operator`, and `rightField`. Both fields are resolved within the same (possibly nested collection) entity scope using the trusted catalog. The validator enforces identical types and approved operators; SQL Server emits validated quoted columns, not user-provided SQL. No runtime binding is required. Scope discovery, Guided and Blueprint editors, graph round-trip and real SQL Server tests cover this increment.
+
+Example:
+
+```json
+{
+  "version": 1,
+  "entity": "Customer",
+  "query": {
+    "type": "collectionExpression",
+    "collection": "Orders",
+    "quantifier": "any",
+    "expression": {
+      "type": "fieldComparison",
+      "leftField": "Id",
+      "operator": "greaterThan",
+      "rightField": "CustomerId"
+    }
+  }
+}
+```
+
+This is the first slice of v0.5.0, **not a release**. Further increments will add typed arithmetic, string/date value functions, explicit conversions and a richer value-expression graph without replacing the existing AST.
+
 ## Dependencies
 
 ```mermaid
