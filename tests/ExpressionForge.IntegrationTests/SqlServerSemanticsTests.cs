@@ -173,6 +173,38 @@ public sealed class SqlServerSemanticsTests
     }
 
     [TestMethod]
+    public async Task Execute_NumericSubtraction_FiltersRootRows()
+    {
+        await AssertIds(new ArithmeticComparisonExpression
+        {
+            Left = new NumericBinaryExpression
+            {
+                Operator = "subtract",
+                Left = new NumericFieldExpression { Field = "Age" },
+                Right = new NumericFieldExpression { Field = "Id" }
+            },
+            Operator = "greaterThan",
+            Right = new NumericLiteralExpression { Value = JsonSerializer.SerializeToElement(20m) }
+        }, "1,3,5");
+    }
+
+    [TestMethod]
+    public async Task Execute_NumericArithmetic_InCollectionUsesScopedSqlAndParameters()
+    {
+        await AssertIds(Collection("any", new ArithmeticComparisonExpression
+        {
+            Left = new NumericBinaryExpression
+            {
+                Operator = "subtract",
+                Left = new NumericFieldExpression { Field = "Total" },
+                Right = new NumericLiteralExpression { Value = JsonSerializer.SerializeToElement(100m) }
+            },
+            Operator = "greaterThan",
+            Right = new NumericLiteralExpression { Value = JsonSerializer.SerializeToElement(20m) }
+        }), "1,3");
+    }
+
+    [TestMethod]
     public async Task Execute_RuntimeBinding_UsesTypedValueInCorrelatedCollection()
     {
         var query = Collection("any", new ComparisonExpression
