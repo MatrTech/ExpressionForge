@@ -406,8 +406,8 @@
           }
           numericInput('Operand', left.right, 'numericOperand');
           numericInput('Threshold', item.right, 'numericThreshold');
-        } else if (['stringLength', 'dateDiffDays'].includes(left?.type) && item.right?.type === 'numericLiteral') {
-          if (left.type === 'stringLength') {
+        } else if (['stringLength', 'dateDiffDays', 'tryParseDecimal'].includes(left?.type) && item.right?.type === 'numericLiteral') {
+          if (['stringLength', 'tryParseDecimal'].includes(left.type)) {
             control('Text field', meta.properties.filter(p => p.dataType === 'string')
               .map(p => [p.id, p.displayName || p.id]), left.field, value => change('stringField', value));
           } else {
