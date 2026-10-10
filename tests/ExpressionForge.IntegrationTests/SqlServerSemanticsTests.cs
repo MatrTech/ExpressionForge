@@ -51,7 +51,8 @@ public sealed class SqlServerSemanticsTests
                 Age int NOT NULL,
                 IsActive bit NOT NULL,
                 StartedAt date NULL,
-                FinishedAt date NULL
+                FinishedAt date NULL,
+                BalanceText nvarchar(64) NULL
             )
             """,
             """
@@ -59,7 +60,8 @@ public sealed class SqlServerSemanticsTests
                 Id int NOT NULL PRIMARY KEY,
                 CustomerId int NOT NULL REFERENCES dbo.Customers(Id),
                 Total decimal(18, 2) NOT NULL,
-                Status nvarchar(40) NULL
+                Status nvarchar(40) NULL,
+                AmountText nvarchar(64) NULL
             )
             """,
             """
@@ -97,6 +99,14 @@ public sealed class SqlServerSemanticsTests
                 (5, 4, 120.00, NULL);
             """,
             """
+            """
+            UPDATE dbo.Customers SET BalanceText = CASE Id
+                WHEN 1 THEN N'123.50' WHEN 2 THEN N'0'
+                WHEN 3 THEN N'not-a-number' WHEN 5 THEN N'-2.75' END;
+            UPDATE dbo.Orders SET AmountText = CASE Id
+                WHEN 1 THEN N'120.50' WHEN 2 THEN N'unparsable'
+                WHEN 3 THEN N'15' WHEN 4 THEN N'225' END;
+            """,
             UPDATE dbo.Customers SET
                 StartedAt = CASE Id
                     WHEN 1 THEN '2026-01-01' WHEN 2 THEN '2026-01-01'
@@ -181,6 +191,46 @@ public sealed class SqlServerSemanticsTests
         {
             LeftField = "Id", Operator = "greaterThan", RightField = "CustomerId"
         }), "1,2,3,4");
+    }
+
+    [TestMethod]
+    public async Task Execute_TryParseDecimal_ConvertsValidTextAndExcludesInvalidOrNullValues()
+    {
+        var baseCatalog = QueryCatalog.CreateDemo();
+        var catalog = new QueryCatalog(baseCatalog.Entities.Select(e => e.Id == "Customer" ? e with
+        {
+            Properties = [..e.Properties, new PropertyMetadata("BalanceText", "Balance text", "string", true,
+                ["equals"])]
+        } : e).ToArray(), baseCatalog.Operators);
+        await AssertIds(new ArithmeticComparisonExpression
+        {
+            Left = new TryParseDecimalExpression { Field = "BalanceText" },
+            Operator = "greaterThan",
+            Right = new NumericLiteralExpression { Value = JsonSerializer.SerializeToElement(100m) }
+        }, "1", schema: catalog);
+        await AssertIds(new ArithmeticComparisonExpression
+        {
+            Left = new TryParseDecimalExpression { Field = "BalanceText" },
+            Operator = "lessThan",
+            Right = new NumericLiteralExpression { Value = JsonSerializer.SerializeToElement(0m) }
+        }, "5", schema: catalog);
+    }
+
+    [TestMethod]
+    public async Task Execute_TryParseDecimal_InCollection_PreservesScopedStringConversion()
+    {
+        var baseCatalog = QueryCatalog.CreateDemo();
+        var catalog = new QueryCatalog(baseCatalog.Entities.Select(e => e.Id == "Order" ? e with
+        {
+            Properties = [..e.Properties, new PropertyMetadata("AmountText", "Amount text", "string", true,
+                ["equals"])]
+        } : e).ToArray(), baseCatalog.Operators);
+        await AssertIds(Collection("any", new ArithmeticComparisonExpression
+        {
+            Left = new TryParseDecimalExpression { Field = "AmountText" },
+            Operator = "greaterThan",
+            Right = new NumericLiteralExpression { Value = JsonSerializer.SerializeToElement(100m) }
+        }), "1,3", schema: catalog);
     }
 
     [TestMethod]
