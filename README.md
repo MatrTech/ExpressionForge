@@ -66,7 +66,8 @@ A `group` combines child predicates with `and`/`or`. An `expression` compares a 
 
 | Method | Endpoint | Function |
 |---|---|---|
-| GET | `/api/query/metadata` | Frontend-safe entity, property, relationship and operator metadata |
+| GET | `/api/query/catalogs` | List registered catalogs visible to the current user |
+| GET | `/api/query/metadata?catalog=projects` | Frontend-safe entity, property, relationship and operator metadata for a selected catalog |
 | GET | `/api/query/metadata/entities/{id}` | Metadata for one entity |
 | POST | `/api/query/metadata/scopes` | Resolve typed entity and field scopes throughout a nested AST |
 | POST | `/api/query/validate` | AST validation with JSON paths and error codes |
