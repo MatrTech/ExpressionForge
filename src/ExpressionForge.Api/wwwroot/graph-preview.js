@@ -112,8 +112,36 @@
       palette.append(button('Cancel connection', 'Cancel pending connection', () => options.onSource?.(null),
         'button small secondary'));
     }
+    const insertBar = el('div', 'blueprint-insert-bar');
+    insertBar.hidden = true;
+    const insertTitle = el('strong', '', 'Insert on connection');
+    const insertFields = available.filter(candidate => candidate.kind === 'expression');
+    const insertField = el('select', 'control');
+    insertField.setAttribute('aria-label', 'Field to insert on connection');
+    for (const candidate of insertFields) {
+      const option = el('option', '', candidate.label);
+      option.value = candidate.field;
+      insertField.append(option);
+    }
+    const insertLogic = el('select', 'control');
+    insertLogic.setAttribute('aria-label', 'Logical operation for inserted predicate');
+    for (const [id, label] of [['and', 'AND with field'], ['or', 'OR with field']]) {
+      const option = el('option', '', label);
+      option.value = id;
+      insertLogic.append(option);
+    }
+    let insertPath = null;
+    const applyInsert = spec => {
+      if (insertPath) options.onInsert?.(insertPath, spec);
+    };
+    const insertAdd = button('Insert', 'Insert selected condition on connection', () =>
+      applyInsert({ operator: insertLogic.value, field: insertField.value }), 'button small primary');
+    insertAdd.disabled = insertFields.length === 0;
+    insertBar.append(insertTitle, insertLogic, insertField, insertAdd,
+      button('Wrap in NOT', 'Negate the existing predicate', () => applyInsert({ kind: 'not' })),
+      button('Cancel', 'Close insertion palette', () => { insertBar.hidden = true; insertPath = null; }));
     bar.append(scope, palette, actions);
-    host.append(bar);
+    host.append(bar, insertBar);
 
     const viewport = el('div', 'blueprint-viewport');
     viewport.setAttribute('aria-label', 'Interactive Blueprint canvas. Drag nodes or background to move; scroll to zoom.');
@@ -123,6 +151,9 @@
     wires.setAttribute('class', 'blueprint-wires');
     wires.setAttribute('aria-hidden', 'true');
     scene.append(wires);
+    const wireControls = el('div', 'blueprint-wire-controls');
+    scene.append(wireControls);
+    const wireButtons = [];
     const cards = new Map();
     for (const node of graph.nodes) {
       const card = el('div', 'blueprint-card blueprint-' + node.kind);
@@ -136,7 +167,10 @@
             if (options.pendingSourcePath) options.onReconnect?.(options.pendingSourcePath, node.path);
           }, 'blueprint-socket-input');
           input.setAttribute('aria-label', 'Connect to ' + description(node));
-          input.disabled = !options.pendingSourcePath || options.pendingSourceEntity !== node.entityId;
+          input.dataset.targetPath = node.path;
+          input.dataset.entityId = node.entityId;
+          input.disabled = Boolean(options.pendingSourcePath) &&
+            options.pendingSourceEntity !== node.entityId;
           head.append(input);
         } else head.append(el('span', 'blueprint-in-port', '●'));
       }
@@ -146,9 +180,13 @@
         const receiver = graph.nodes.find(item => item.key === receiverKey);
         const movable = receiver?.kind === 'group' ||
           (receiver?.kind === 'sink' && graph.kind === 'logicalGroup');
-        const output = button('●', movable ? 'Select predicate output for reconnection' :
-          'This predicate belongs to a single-input expression', () =>
-          options.onSource?.(node.path, node.entityId), 'blueprint-socket-output');
+        const output = button('●', movable ? 'Drag to a compatible group socket, or click to select' :
+          'This predicate belongs to a single-input expression', event => {
+            if (event.detail === 0) options.onSource?.(node.path, node.entityId);
+          }, 'blueprint-socket-output');
+        output.dataset.sourcePath = node.path;
+        output.dataset.entityId = node.entityId;
+        output.dataset.nodeKey = node.key;
         output.disabled = !movable;
         output.setAttribute('aria-label', 'Select output from ' + description(node));
         if (options.pendingSourcePath === node.path) output.classList.add('blueprint-socket-selected');
@@ -185,6 +223,14 @@
       const inspector = el('section', 'blueprint-inline-inspector');
       inspector.setAttribute('aria-label', 'Edit selected predicate');
       inspector.append(el('strong', '', 'Edit · ' + description(selected)));
+      const canRemove = options.onCanRemove?.(selected.path) ?? false;
+      const remove = button('Delete predicate', 'Remove this predicate and all its children', () => {
+        if (window.confirm('Delete this predicate and all nested conditions?'))
+          options.onRemove?.(selected.path);
+      }, 'button small danger');
+      remove.disabled = !canRemove;
+      if (!canRemove) remove.title = 'The root and sole child predicates cannot be removed.';
+      inspector.append(remove);
       const item = selected.data || {};
       const meta = options.catalog.entities.find(e => e.id === selected.entityId);
       function control(label, choices, value, action) {
@@ -251,6 +297,19 @@
       host.append(inspector);
     }
     const layout = helper.ensure(state, graph, viewport.clientWidth || 700, viewport.clientHeight || 460);
+    for (const edge of graph.edges) {
+      const source = graph.nodes.find(node => node.key === edge.from);
+      if (!source?.path) continue;
+      const addWire = button('+', 'Insert an expression on the connection from ' + description(source),
+        () => {
+          insertPath = source.path;
+          insertBar.hidden = false;
+          insertField.focus();
+        }, 'blueprint-wire-add');
+      addWire.setAttribute('aria-label', 'Insert on connection after ' + description(source));
+      wireControls.append(addWire);
+      wireButtons.push({ edge, button: addWire });
+    }
 
     function draw() {
       const view = layout.viewport;
@@ -263,6 +322,12 @@
       wires.replaceChildren();
       const incomingCounts = new Map();
       for (const edge of graph.edges) incomingCounts.set(edge.to, (incomingCounts.get(edge.to) || 0) + 1);
+      for (const { edge, button: addWire } of wireButtons) {
+        const from = layout.positions[edge.from], to = layout.positions[edge.to];
+        addWire.style.transform = 'translate(' +
+          ((from.x + dimensions.width + to.x) / 2 - 13) + 'px,' +
+          ((from.y + to.y + dimensions.height) / 2 - 13) + 'px)';
+      }
       for (const edge of graph.edges) {
         const source = layout.positions[edge.from];
         const target = layout.positions[edge.to];
