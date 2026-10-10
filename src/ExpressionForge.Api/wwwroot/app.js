@@ -347,6 +347,7 @@ function renderGraphPreview() {
       renderGraphPreview();
     }, {
       layoutState: state.graphLayout, onLayoutChange: saveCanvasLayout, catalog: state.catalog,
+      onCanRemove: path => ExpressionForgeGraphEdit.canRemove(state.definition, state.catalog, path),
       onRemove: path => applyGraphEdit(() =>
         ExpressionForgeGraphEdit.remove(state.definition, state.catalog, path)),
       onInsert: (path, spec) => applyGraphEdit(() =>
