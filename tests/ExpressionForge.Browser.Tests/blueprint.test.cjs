@@ -102,9 +102,8 @@ test('.NET API editor boots with registered catalogs and really compiles a SQL q
   t.after(() => page.close());
   const response = await page.goto(api, { waitUntil: 'domcontentloaded' });
   assert.equal(response.status(), 200);
-  await page.locator('#connection').getByText(/Catalog/).waitFor({ timeout: 15000 }).catch(async () => {
-    await page.waitForFunction(() => document.getElementById('connection').textContent.startsWith('Catalog '));
-  });
+  await page.waitForFunction(() => document.getElementById('connection').textContent.startsWith('Catalog '),
+    { timeout: 15000 });
   await page.locator('#compile').click();
   await page.waitForFunction(() => document.getElementById('output').textContent.includes('SELECT'));
   assert.match(await page.locator('#output').textContent(), /FROM/);
