@@ -105,3 +105,23 @@ button.blueprint-card:hover,button.blueprint-card:focus-visible{outline:2px soli
 /* Keep socket hit targets outside the node's visual border, and dim non-movable outputs. */
 .blueprint-scene .blueprint-card{overflow:visible}
 .blueprint-scene .blueprint-socket-output:disabled{opacity:.45;cursor:not-allowed}
+/* v0.4 increment 4 — semantic wire actions, invalid drop feedback, and insertion controls. */
+.blueprint-insert-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px;padding:10px;
+  border:1px solid #5b5b87;background:#1b2441;border-radius:9px}
+.blueprint-insert-bar>strong{font-size:12px;color:#dce4ff}
+.blueprint-insert-bar .control{height:31px;width:auto;max-width:205px;font-size:11px}
+.blueprint-wire-controls{position:absolute;left:0;top:0;pointer-events:none;z-index:4}
+.blueprint-wire-add{position:absolute;top:0;left:0;transform-origin:0 0;width:26px;height:26px;border-radius:50%;
+  border:1px solid #6e88c4;background:#273e65;color:#e5ecff;font-size:18px;line-height:19px;
+  opacity:.45;cursor:pointer;pointer-events:auto;padding:0}
+.blueprint-wire-add:hover,.blueprint-wire-add:focus-visible{opacity:1;background:#55458d;outline:2px solid #bdadff}
+.blueprint-wire-pending{stroke:#94d5ff;stroke-dasharray:8 5;stroke-width:3;opacity:1}
+.blueprint-viewport.blueprint-dragging-wire{cursor:crosshair}
+.blueprint-scene .blueprint-socket-input.blueprint-drop-valid{background:#236b53;color:#c8ffe7;
+  border-color:#81edbf;box-shadow:0 0 0 4px #35d99b66}
+.blueprint-scene .blueprint-socket-input.blueprint-drop-invalid{background:#844052;color:#ffdbdf;
+  border-color:#ef8ca4;box-shadow:0 0 0 3px #d86d7955}
+.blueprint-scene .blueprint-socket-output:not(:disabled){touch-action:none;cursor:crosshair}
+.blueprint-inline-inspector>.button.danger{margin-left:auto}
+.editor-modes button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:700px){.blueprint-insert-bar .control{max-width:155px}}
