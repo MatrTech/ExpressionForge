@@ -1,0 +1,58 @@
+{
+  "definition": {
+    "version": 1,
+    "entity": "Project",
+    "query": {
+      "type": "group",
+      "id": "project-root",
+      "operator": "and",
+      "expressions": [
+        {
+          "type": "expression",
+          "id": "project-active",
+          "field": "Archived",
+          "operator": "equals",
+          "value": false
+        },
+        {
+          "type": "expression",
+          "id": "project-budget",
+          "field": "Budget",
+          "operator": "greaterThanOrEqual",
+          "parameter": "minimumBudget"
+        },
+        {
+          "type": "collectionExpression",
+          "id": "project-tasks",
+          "collection": "Tasks",
+          "quantifier": "any",
+          "expression": {
+            "type": "group",
+            "id": "task-rules",
+            "operator": "and",
+            "expressions": [
+              {
+                "type": "expression",
+                "id": "task-state",
+                "field": "State",
+                "operator": "equals",
+                "value": "Open"
+              },
+              {
+                "type": "expression",
+                "id": "task-hours",
+                "field": "Hours",
+                "operator": "greaterThan",
+                "parameter": "minimumHours"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "parameters": {
+    "minimumBudget": 10000,
+    "minimumHours": 12
+  }
+}

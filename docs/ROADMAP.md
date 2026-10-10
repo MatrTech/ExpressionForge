@@ -41,7 +41,9 @@ Final correctness review is complete, including diagnostic ownership, cross-type
 
 ## Next work: v0.3.0
 
-Introduce a pluggable metadata catalog and type resolver while preserving the current JSON AST v1 and SQL Server semantics. Start with registration and validation, then integrate the frontend and authorization-aware metadata responses. Keep the [GitHub Pages example gallery](https://matrtech.github.io/ExpressionForge/#examples) updated with examples that are also exercised by .NET and SQL Server tests.
+**Increment 1 — registered catalogs:** Add a validated `QueryCatalogBuilder`, trusted JSON catalog loading, and API configuration to replace the built-in demo with any supported entity schema. Validate operator compatibility, SQL mapping identifiers, relationship target/key types and read-only catalog snapshots. Include a Project/Task example on the website, compiler tests, and a real SQL Server 2022 execution test. The existing frontend discovers the new metadata through the same endpoint.
+
+**Next increments:** Catalog revision/fingerprinting and typed scope resolution; authorization-aware entity/field discovery; extensible metadata sources and frontend switching. Dynamic operator implementations, introspection and hot reload remain out of scope for this increment. Keep the [GitHub Pages example gallery](https://matrtech.github.io/ExpressionForge/#examples) updated with examples that are also exercised by .NET and SQL Server tests.
 
 ## Dependencies
 

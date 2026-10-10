@@ -60,6 +60,31 @@ public sealed class SqlServerSemanticsTests
             )
             """,
             """
+            CREATE TABLE dbo.Projects (
+                Id int NOT NULL PRIMARY KEY,
+                Name nvarchar(120) NOT NULL,
+                Budget decimal(18, 2) NOT NULL,
+                Archived bit NOT NULL
+            )
+            """,
+            """
+            CREATE TABLE dbo.Tasks (
+                Id int NOT NULL PRIMARY KEY,
+                ProjectId int NOT NULL REFERENCES dbo.Projects(Id),
+                Hours decimal(18, 2) NOT NULL,
+                State nvarchar(40) NOT NULL
+            )
+            """,
+            """
+            INSERT INTO dbo.Projects (Id, Name, Budget, Archived) VALUES
+                (1, N'Platform', 20000, 0), (2, N'Prototype', 9000, 0),
+                (3, N'Legacy', 30000, 1), (4, N'Quick fix', 15000, 0),
+                (5, N'Finished', 25000, 0), (6, N'Expansion', 50000, 0);
+            INSERT INTO dbo.Tasks (Id, ProjectId, Hours, State) VALUES
+                (1, 1, 20, N'Open'), (2, 2, 20, N'Open'), (3, 3, 25, N'Open'),
+                (4, 4, 8, N'Open'), (5, 5, 40, N'Closed'), (6, 6, 18, N'Open');
+            """,
+            """
             INSERT INTO dbo.Customers (Id, FirstName, Age, IsActive) VALUES
                 (1, N'John', 27, 1), (2, N'John', 16, 0), (3, N'Alice', 34, 1),
                 (4, N'John', 17, 1), (5, NULL, 40, 1);
@@ -172,6 +197,49 @@ public sealed class SqlServerSemanticsTests
             item => item.Name, item => item.Value.GetProperty("value").Clone(), StringComparer.Ordinal);
 
         await AssertIds(definition.Query, expected, bindings);
+    }
+
+    [TestMethod]
+    public async Task Execute_CustomRegisteredCatalog_ReturnsExpectedProjectIds()
+    {
+        Assert.IsNotNull(_database);
+        var catalog = QueryCatalogFile.Load(Path.Combine(AppContext.BaseDirectory, "project-catalog.json"));
+        using var document = JsonDocument.Parse(await File.ReadAllTextAsync(
+            Path.Combine(AppContext.BaseDirectory, "project-query.json"), TestContext.CancellationToken));
+        var definition = JsonSerializer.Deserialize<QueryDefinition>(
+            document.RootElement.GetProperty("definition"), ExpressionForgeJson.CreateOptions())!;
+        var bindings = document.RootElement.GetProperty("parameters").EnumerateObject().ToDictionary(
+            item => item.Name, item => item.Value.Clone(), StringComparer.Ordinal);
+        var plan = new SqlServerQueryCompiler(catalog, new QueryValidator(catalog)).Compile(definition, 100, bindings);
+
+        await using var connection = new SqlConnection(_database.GetConnectionString());
+        await connection.OpenAsync(TestContext.CancellationToken);
+        await using var command = new SqlCommand(plan.Sql, connection) { CommandTimeout = 30 };
+        foreach (var parameter in plan.Parameters)
+        {
+            var sqlParameter = command.Parameters.Add(parameter.Name, parameter.DbType switch
+            {
+                DbType.Int32 => SqlDbType.Int,
+                DbType.Decimal => SqlDbType.Decimal,
+                DbType.Boolean => SqlDbType.Bit,
+                DbType.String => SqlDbType.NVarChar,
+                _ => throw new NotSupportedException(parameter.DbType.ToString())
+            });
+            sqlParameter.Value = parameter.Value;
+            if (parameter.DbType == DbType.Decimal)
+            {
+                sqlParameter.Precision = 38;
+                sqlParameter.Scale = 10;
+            }
+            if (parameter.DbType == DbType.String)
+                sqlParameter.Size = Math.Max(1, ((string)parameter.Value).Length);
+        }
+
+        var ids = new List<int>();
+        await using var reader = await command.ExecuteReaderAsync(TestContext.CancellationToken);
+        while (await reader.ReadAsync(TestContext.CancellationToken))
+            ids.Add(reader.GetInt32(0));
+        CollectionAssert.AreEquivalent(new[] { 1, 6 }, ids.ToArray());
     }
 
     private static ComparisonExpression Compare<T>(string field, string op, T value) => new()

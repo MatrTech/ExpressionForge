@@ -1,0 +1,121 @@
+{
+  "entities": [
+    {
+      "id": "Project",
+      "displayName": "Projects",
+      "schema": "dbo",
+      "table": "Projects",
+      "properties": [
+        {
+          "id": "Id",
+          "displayName": "Project ID",
+          "dataType": "integer",
+          "nullable": false,
+          "operators": [
+            "equals",
+            "notEquals",
+            "greaterThan",
+            "lessThan"
+          ]
+        },
+        {
+          "id": "Name",
+          "displayName": "Project name",
+          "dataType": "string",
+          "nullable": false,
+          "operators": [
+            "equals",
+            "contains",
+            "startsWith",
+            "isNull",
+            "isNotNull"
+          ]
+        },
+        {
+          "id": "Budget",
+          "displayName": "Budget",
+          "dataType": "decimal",
+          "nullable": false,
+          "operators": [
+            "equals",
+            "greaterThan",
+            "greaterThanOrEqual",
+            "lessThan"
+          ]
+        },
+        {
+          "id": "Archived",
+          "displayName": "Archived",
+          "dataType": "boolean",
+          "nullable": false,
+          "operators": [
+            "equals",
+            "notEquals"
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "id": "Tasks",
+          "displayName": "Project tasks",
+          "targetEntity": "Task",
+          "parentKey": "Id",
+          "childForeignKey": "ProjectId"
+        }
+      ]
+    },
+    {
+      "id": "Task",
+      "displayName": "Tasks",
+      "schema": "dbo",
+      "table": "Tasks",
+      "properties": [
+        {
+          "id": "Id",
+          "displayName": "Task ID",
+          "dataType": "integer",
+          "nullable": false,
+          "operators": [
+            "equals",
+            "greaterThan"
+          ]
+        },
+        {
+          "id": "ProjectId",
+          "displayName": "Project ID",
+          "dataType": "integer",
+          "nullable": false,
+          "operators": [
+            "equals",
+            "greaterThan"
+          ]
+        },
+        {
+          "id": "Hours",
+          "displayName": "Estimated hours",
+          "dataType": "decimal",
+          "nullable": false,
+          "operators": [
+            "equals",
+            "greaterThan",
+            "greaterThanOrEqual",
+            "lessThan"
+          ]
+        },
+        {
+          "id": "State",
+          "displayName": "Task state",
+          "dataType": "string",
+          "nullable": false,
+          "operators": [
+            "equals",
+            "notEquals",
+            "isNull",
+            "isNotNull"
+          ]
+        }
+      ],
+      "relationships": []
+    }
+  ]
+}
