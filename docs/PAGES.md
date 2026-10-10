@@ -45,3 +45,7 @@ The site uses project-relative asset paths so it works under the `/ExpressionFor
 - `tests/ExpressionForge.Site.Tests/site.test.cjs`: tests for AST shape, SQL illustration and relative assets.
 
 Update the public roadmap when a release actually ships. Do not label a planned milestone as released before the package version and GitHub Release are published.
+
+## Dynamic metadata showcase
+
+The [v0.3.0 metadata section](../site/index.html) demonstrates the trusted [Project/Task catalog](../examples/project-catalog.json) and a nested [bound query](../examples/project-query.json). The fixtures are validated and compiled by `DynamicCatalogTests`; GitHub Pages itself does not execute the API.
