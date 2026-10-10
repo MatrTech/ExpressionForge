@@ -32,7 +32,11 @@ jobs:
       - name: Test (MSTest)
         run: dotnet test tests/ExpressionForge.Tests/ExpressionForge.Tests.csproj -c Release --no-build --logger "trx;LogFileName=tests.trx" --results-directory TestResults
       - name: Validate editor JavaScript
-        run: node --check src/ExpressionForge.Api/wwwroot/app.js
+        run: |
+          node --check src/ExpressionForge.Api/wwwroot/app.js
+          node --check src/ExpressionForge.Api/wwwroot/parameter-utils.js
+      - name: Test editor parameter bindings
+        run: node --test tests/ExpressionForge.Editor.Tests/*.test.cjs
       - name: Pack core library
         run: dotnet pack src/ExpressionForge.Core/ExpressionForge.Core.csproj -c Release --no-build -o artifacts/packages
       - name: Upload test results
