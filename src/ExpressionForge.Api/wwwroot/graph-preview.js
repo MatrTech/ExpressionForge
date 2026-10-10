@@ -142,8 +142,14 @@
       }
       head.append(el('strong', 'blueprint-label', description(node)));
       if (node.output) {
-        const output = button('●', 'Select predicate output for reconnection', () =>
+        const receiverKey = graph.edges.find(edge => edge.from === node.key)?.to;
+        const receiver = graph.nodes.find(item => item.key === receiverKey);
+        const movable = receiver?.kind === 'group' ||
+          (receiver?.kind === 'sink' && graph.kind === 'logicalGroup');
+        const output = button('●', movable ? 'Select predicate output for reconnection' :
+          'This predicate belongs to a single-input expression', () =>
           options.onSource?.(node.path, node.entityId), 'blueprint-socket-output');
+        output.disabled = !movable;
         output.setAttribute('aria-label', 'Select output from ' + description(node));
         if (options.pendingSourcePath === node.path) output.classList.add('blueprint-socket-selected');
         head.append(output);
