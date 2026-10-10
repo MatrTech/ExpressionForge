@@ -10,6 +10,7 @@
   <script src="/graph-model.js" defer></script>
   <script src="/graph-layout.js" defer></script>
   <script src="/graph-edit.js" defer></script>
+  <script src="/graph-history.js" defer></script>
   <script src="/graph-preview.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
@@ -40,6 +41,8 @@
       <div class="editor-modes" role="group" aria-label="Query editor mode">
         <button id="guided-mode" class="button secondary" aria-pressed="true">Guided editor</button>
         <button id="blueprint-mode" class="button ghost" aria-pressed="false">Blueprint canvas ↗</button>
+        <button id="undo-edit" class="button ghost" aria-label="Undo query or canvas change" disabled>↶ Undo</button>
+        <button id="redo-edit" class="button ghost" aria-label="Redo query or canvas change" disabled>↷ Redo</button>
       </div>
       <div id="graph" class="graph"></div>
       <div id="graph-preview" class="blueprint-preview" hidden></div>

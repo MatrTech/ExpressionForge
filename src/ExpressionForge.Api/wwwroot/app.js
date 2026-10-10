@@ -4,7 +4,7 @@ const $ = id => document.getElementById(id);
 const state = { catalog: null, catalogs: [], definition: null, parameters: {}, drafts: new Map(),
   graphPreview: false, activeGraphKey: 'root', graphSubgraphs: new Set(),
   graphLayout: null, layoutKey: null, expandedNodePath: null,
-  pendingSourcePath: null, pendingSourceEntity: null };
+  pendingSourcePath: null, pendingSourceEntity: null, history: null, historyRestoring: false };
 const sample = {
   version: 1,
   entity: 'Customer',
@@ -211,11 +211,48 @@ function ensureNodeIds(expression) {
   else if (['not', 'collectionExpression'].includes(expression.type))
     ensureNodeIds(expression.expression);
 }
+function captureSnapshot() {
+  return { definition: structuredClone(state.definition), parameters: structuredClone(state.parameters),
+    graphLayout: structuredClone(state.graphLayout) };
+}
+function refreshHistoryButtons() {
+  const available = ExpressionForgeHistory.available(state.history);
+  $('undo-edit').disabled = !available.undo;
+  $('redo-edit').disabled = !available.redo;
+}
+function recordHistory() {
+  if (state.historyRestoring || !state.definition || !state.graphLayout) return;
+  const snapshot = captureSnapshot();
+  if (!state.history) state.history = ExpressionForgeHistory.create(snapshot);
+  else ExpressionForgeHistory.commit(state.history, snapshot);
+  refreshHistoryButtons();
+}
+function restoreHistory(direction) {
+  if (!state.history) return;
+  const previous = direction === 'undo' ? ExpressionForgeHistory.undo(state.history)
+    : ExpressionForgeHistory.redo(state.history);
+  if (!previous) return;
+  state.historyRestoring = true;
+  try {
+    state.definition = previous.definition;
+    state.parameters = previous.parameters;
+    state.graphLayout = previous.graphLayout;
+    state.expandedNodePath = null;
+    state.pendingSourcePath = null;
+    state.pendingSourceEntity = null;
+    ExpressionForgeGraphLayout.write(browserStorage(), state.layoutKey, state.graphLayout);
+    render();
+  } finally {
+    state.historyRestoring = false;
+    refreshHistoryButtons();
+  }
+}
 function updateJson() {
   ensureNodeIds(state.definition.query);
   $('json').value = JSON.stringify(state.definition, null, 2);
   $('node-count').textContent = `${countNodes(state.definition.query)} nodes`;
   renderParameters();
+  recordHistory();
   if (state.graphPreview) renderGraphPreview();
 }
 function renderParameters() {
@@ -247,6 +284,7 @@ function renderParameters() {
     input.addEventListener('input', () => {
       if (input.value === '' && definition.dataType !== 'string') delete state.parameters[definition.name];
       else state.parameters[definition.name] = input.value;
+      recordHistory();
     });
     if (definition.conflict || !definition.validName) {
       const issue = element('span', 'parameter-error',
@@ -285,10 +323,14 @@ function useCanvasLayout(catalogId, entityId) {
 }
 function saveCanvasLayout() {
   ExpressionForgeGraphLayout.write(browserStorage(), state.layoutKey, state.graphLayout);
+  recordHistory();
 }
 function applyGraphEdit(operation) {
   try {
     state.definition = operation();
+    state.pendingSourcePath = null;
+    state.pendingSourceEntity = null;
+    state.expandedNodePath = null;
     render();
     show('Query updated. Validate before execution.', 'success');
   } catch (error) { show(error.message, 'error'); }
@@ -305,6 +347,13 @@ function renderGraphPreview() {
       renderGraphPreview();
     }, {
       layoutState: state.graphLayout, onLayoutChange: saveCanvasLayout, catalog: state.catalog,
+      onCanRemove: path => ExpressionForgeGraphEdit.canRemove(state.definition, state.catalog, path),
+      onRemove: path => applyGraphEdit(() =>
+        ExpressionForgeGraphEdit.remove(state.definition, state.catalog, path)),
+      onInsert: (path, spec) => applyGraphEdit(() =>
+        ExpressionForgeGraphEdit.insert(state.definition, state.catalog, path, spec)),
+      onCheckReconnect: (source, target) => ExpressionForgeGraphEdit.canReconnect(
+        state.definition, state.catalog, source, target),
       expandedPath: state.expandedNodePath, pendingSourcePath: state.pendingSourcePath,
       pendingSourceEntity: state.pendingSourceEntity,
       onExpand: path => {
@@ -405,6 +454,7 @@ async function activateCatalog(catalogId, imported = null) {
     state.drafts.set(state.catalog.catalogId, { definition: structuredClone(state.definition), parameters: { ...state.parameters } });
   state.catalog = metadata;
   state.definition = definition;
+  state.history = null;
   state.expandedNodePath = null;
   state.pendingSourcePath = null;
   state.pendingSourceEntity = null;
@@ -422,6 +472,7 @@ async function activateCatalog(catalogId, imported = null) {
     state.pendingSourcePath = null;
     state.pendingSourceEntity = null;
     useCanvasLayout(state.catalog.catalogId, value);
+    state.history = null;
     state.activeGraphKey = 'root';
     state.graphSubgraphs.clear();
     render(); show('');
@@ -431,6 +482,19 @@ async function activateCatalog(catalogId, imported = null) {
 }
 
 async function start() {
+  $('undo-edit').addEventListener('click', () => restoreHistory('undo'));
+  $('redo-edit').addEventListener('click', () => restoreHistory('redo'));
+  window.addEventListener('keydown', event => {
+    if (!(event.ctrlKey || event.metaKey) || event.altKey || event.target.closest('input, textarea, select, [contenteditable]'))
+      return;
+    const key = event.key.toLowerCase();
+    const direction = key === 'z' ? (event.shiftKey ? 'redo' : 'undo') :
+      key === 'y' && !event.shiftKey ? 'redo' : null;
+    if (!direction) return;
+    event.preventDefault();
+    restoreHistory(direction);
+  });
+  refreshHistoryButtons();
   $('guided-mode').addEventListener('click', () => setEditorMode(false));
   $('blueprint-mode').addEventListener('click', () => setEditorMode(true));
   for (const endpoint of ['validate', 'compile', 'preview']) $(endpoint).addEventListener('click', () => perform(endpoint));

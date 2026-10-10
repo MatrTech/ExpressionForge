@@ -160,5 +160,43 @@
     target.node.expressions.push(source.node);
     return verify(next, catalog);
   }
-  return { locate, makePredicate, options, append, change, reconnect };
+  function canRemove(definition, catalog, path) {
+    try {
+      const ref = locate(definition, catalog, path);
+      return ref.parent?.type === 'group' && ref.slot?.prop === 'expressions' &&
+        ref.parent.expressions.length > 1;
+    } catch { return false; }
+  }
+  function remove(definition, catalog, path) {
+    const next = clone(definition);
+    const ref = locate(next, catalog, path);
+    if (ref.parent?.type !== 'group' || ref.slot?.prop !== 'expressions')
+      throw Error('Only predicates within a logical group can be deleted.');
+    if (ref.parent.expressions.length <= 1)
+      throw Error('Cannot delete the only predicate in a logical group.');
+    ref.parent.expressions.splice(ref.slot.index, 1);
+    return verify(next, catalog);
+  }
+  function insert(definition, catalog, path, specification) {
+    const next = clone(definition);
+    const ref = locate(next, catalog, path);
+    if (specification?.kind === 'not') {
+      put(next, ref, { type: 'not', expression: ref.node });
+      return verify(next, catalog);
+    }
+    if (!['and', 'or'].includes(specification?.operator) || !specification.field)
+      throw Error('Choose AND/OR and an available field to insert on this connection.');
+    const additional = makePredicate(catalog, ref.entityId,
+      { kind: 'expression', field: specification.field });
+    put(next, ref, { type: 'group', operator: specification.operator,
+      expressions: [ref.node, additional] });
+    return verify(next, catalog);
+  }
+  function canReconnect(definition, catalog, sourcePath, targetPath) {
+    try {
+      reconnect(definition, catalog, sourcePath, targetPath);
+      return { valid: true, reason: null };
+    } catch (error) { return { valid: false, reason: error.message }; }
+  }
+  return { locate, makePredicate, options, append, change, reconnect, remove, insert, canReconnect, canRemove };
 });
