@@ -69,6 +69,7 @@
 
       if (expression.type === 'group') {
         if (collapsed.has(expression.id) || collapsed.has(path)) {
+          node.input = null;
           node.childGraphKey = 'subgraph:' + key;
           const childGraph = createGraph(node.childGraphKey, graph.key, key, 'logicalGroup', entityId, 'many');
           addChildren(expression.expressions, entityId, path, childGraph, childGraph.rootNodeKey);
@@ -79,7 +80,7 @@
         connect(graph, visit(expression.expression, entityId, path + '.expression', graph), key, 0);
       } else if (expression.type === 'collectionExpression') {
         const metadata = catalog.entities.find(entity => entity.id === entityId);
-        const relation = metadata && metadata.relationships.find(item => item.id === expression.collection);
+        const relation = metadata?.relationships?.find(item => item.id === expression.collection);
         const target = relation ? relation.targetEntity : 'unresolved:' + expression.collection;
         node.childGraphKey = 'subgraph:' + key;
         const childGraph = createGraph(node.childGraphKey, graph.key, key, 'collection', target, 'single');
@@ -122,6 +123,25 @@
   }
 
   function toDefinition(projection) {
+    for (const graph of projection.graphs) {
+      const outputs = new Set();
+      const inputs = new Set();
+      for (const edge of graph.edges) {
+        const from = graph.nodes.find(node => node.key === edge.from);
+        const to = graph.nodes.find(node => node.key === edge.to);
+        if (!from?.output || !to?.input ||
+            from.output.kind !== to.input.kind || from.output.entityId !== to.input.entityId)
+          throw new Error('Graph contains an incompatible predicate connection.');
+        if (!Number.isSafeInteger(edge.inputIndex) || edge.inputIndex < 0 ||
+            (to.input.cardinality === 'single' && edge.inputIndex !== 0))
+          throw new Error('Graph contains an invalid input socket.');
+        const socketKey = edge.to + ':' + edge.inputIndex;
+        if (outputs.has(edge.from) || inputs.has(socketKey))
+          throw new Error('Graph cannot share AST nodes or reuse occupied inputs.');
+        outputs.add(edge.from);
+        inputs.add(socketKey);
+      }
+    }
     const graphs = new Map(projection.graphs.map(graph => [graph.key, graph]));
     const visited = new Set();
 
