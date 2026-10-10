@@ -155,6 +155,24 @@ public sealed class SqlServerSemanticsTests
     }
 
     [TestMethod]
+    public async Task Execute_FieldComparison_RespectsRootColumnValues()
+    {
+        await AssertIds(new FieldComparisonExpression
+        {
+            LeftField = "Id", Operator = "lessThan", RightField = "Age"
+        }, "1,2,3,4,5");
+    }
+
+    [TestMethod]
+    public async Task Execute_FieldComparisonInCollection_UsesChildColumns()
+    {
+        await AssertIds(Collection("any", new FieldComparisonExpression
+        {
+            LeftField = "Id", Operator = "greaterThan", RightField = "CustomerId"
+        }), "1,2,3,4");
+    }
+
+    [TestMethod]
     public async Task Execute_RuntimeBinding_UsesTypedValueInCorrelatedCollection()
     {
         var query = Collection("any", new ComparisonExpression
