@@ -79,7 +79,9 @@ Example:
 
 **Increment 3 — safe division and runtime numeric parameters:** `numericBinary.operator=divide` compiles the denominator using SQL Server `NULLIF(..., 0)`, so division by zero yields `NULL`, never a divide-by-zero exception. As with other SQL three-valued comparisons, UNKNOWN does not select a row. `numericParameter` references a separately supplied, named decimal binding; the numeric value is strictly validated (±1e12, up to six decimal places), and names participate in shared parameter-type conflict checks. The Guided and Blueprint calculation controls can switch the operand and threshold between literal and runtime parameter, and the existing bindings panel discovers nested parameters in collection scopes. Unit, editor, browser and real SQL Server 2022 coverage include literal and runtime zero divisors and incompatible bindings.
 
-This is a development increment, **not a package release**. Next: typed string/date functions, explicit conversions, composable visual value sockets, and review of SQL numeric-overflow policies.
+**Increment 4 — typed string/date functions:** Added `stringLength` and `dateDiffDays` numeric-value nodes, composable in the existing numeric tree. String length follows SQL Server `LEN` semantics; date differences count signed calendar-day boundaries between fields of matching date/dateTime types. Missing, inaccessible, or wrong-type fields are rejected before SQL generation, including in nested collection scopes. Both functions preserve NULL semantics, and the existing 16-level/256-node budgets apply. Guided/Blueprint expose common field-and-threshold controls. Unit, real SQL Server, editor and Chromium tests cover these behaviors.
+
+This is a development increment, **not a package release**. Next: explicit type conversions, richer typed value sockets and numeric-overflow policy hardening.
 
 ## Dependencies
 
