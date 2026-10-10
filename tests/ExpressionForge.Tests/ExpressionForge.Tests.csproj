@@ -8,5 +8,6 @@
     <PackageReference Include="MSTest.TestAdapter" Version="3.6.4" />
     <PackageReference Include="MSTest.TestFramework" Version="3.6.4" />
     <ProjectReference Include="../../src/ExpressionForge.Core/ExpressionForge.Core.csproj" />
+    <None Include="../../site/examples.json" Link="examples.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
