@@ -71,6 +71,42 @@ app.MapPost("/api/query/preview", async (QueryDefinition definition, int? limit,
     }
 });
 
+
+// Bound endpoints accept runtime values separately from the saved query definition.
+// The existing unbound endpoints remain available for literal-only queries.
+app.MapPost("/api/query/validate/bound", (BoundQueryRequest request, QueryValidator validator) =>
+    Results.Ok(validator.Validate(request.Definition, request.Parameters)));
+
+app.MapPost("/api/query/compile/bound", (BoundQueryRequest request, int? limit,
+    SqlServerQueryCompiler compiler, QueryValidator validator) =>
+{
+    var validation = validator.Validate(request.Definition, request.Parameters);
+    if (!validation.IsValid) return Results.UnprocessableEntity(validation);
+    if (limit is < 1 or > SqlServerQueryCompiler.MaximumRows)
+        return Results.BadRequest(new { error = $"Limit must be between 1 and {SqlServerQueryCompiler.MaximumRows}." });
+    return Results.Ok(compiler.Compile(request.Definition, limit ?? 25, request.Parameters));
+});
+
+app.MapPost("/api/query/preview/bound", async (BoundQueryRequest request, int? limit,
+    SqlServerQueryCompiler compiler, QueryValidator validator, SqlServerQueryExecutor executor, CancellationToken cancellationToken) =>
+{
+    var validation = validator.Validate(request.Definition, request.Parameters);
+    if (!validation.IsValid) return Results.UnprocessableEntity(validation);
+    if (limit is < 1 or > SqlServerQueryCompiler.MaximumRows)
+        return Results.BadRequest(new { error = $"Limit must be between 1 and {SqlServerQueryCompiler.MaximumRows}." });
+    if (!executor.IsConfigured)
+        return Results.Problem("Configure ConnectionStrings__ExpressionForge to enable database preview.", statusCode: 503);
+    var plan = compiler.Compile(request.Definition, limit ?? 25, request.Parameters);
+    try
+    {
+        return Results.Ok(await executor.ExecuteAsync(plan, cancellationToken));
+    }
+    catch (Microsoft.Data.SqlClient.SqlException)
+    {
+        return Results.Problem("SQL Server query execution failed. Check the database schema, permissions and connection.", statusCode: 502);
+    }
+});
+
 app.MapFallbackToFile("index.html");
 app.Run();
 
