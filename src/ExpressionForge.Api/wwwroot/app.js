@@ -199,13 +199,13 @@ function createNode(expression, entityId, remove, path = '$.query') {
       body.append(fieldRow('Compare', select(
         ['equals','notEquals','greaterThan','greaterThanOrEqual','lessThan','lessThanOrEqual']
           .map(value => ({ value, label: value })), expression.operator, value => modify('numericComparator', value))));
-    } else if (['stringLength', 'dateDiffDays'].includes(arithmetic?.type) &&
+    } else if (['stringLength', 'dateDiffDays', 'tryParseDecimal'].includes(arithmetic?.type) &&
       expression.right?.type === 'numericLiteral') {
       const props = entity(entityId).properties;
       function modify(kind, value) {
         applyGraphEdit(() => ExpressionForgeGraphEdit.change(state.definition, state.catalog, path, { kind, value }));
       }
-      if (arithmetic.type === 'stringLength') {
+      if (['stringLength', 'tryParseDecimal'].includes(arithmetic.type)) {
         body.append(fieldRow('Text field', select(props.filter(p => p.dataType === 'string')
           .map(p => ({ value: p.id, label: p.displayName })), arithmetic.field,
           value => modify('stringField', value))));
@@ -412,12 +412,12 @@ function saveCanvasLayout() {
   ExpressionForgeGraphLayout.write(browserStorage(), state.layoutKey, state.graphLayout);
   recordHistory();
 }
-function applyGraphEdit(operation) {
+function applyGraphEdit(operation, keepInspector = false) {
   try {
     state.definition = operation();
     state.pendingSourcePath = null;
     state.pendingSourceEntity = null;
-    state.expandedNodePath = null;
+    if (!keepInspector) state.expandedNodePath = null;
     render();
     show('Query updated. Validate before execution.', 'success');
   } catch (error) { show(error.message, 'error'); }
@@ -451,6 +451,8 @@ function renderGraphPreview() {
         ExpressionForgeGraphEdit.append(state.definition, state.catalog, path, spec)),
       onChange: (path, patch) => applyGraphEdit(() =>
         ExpressionForgeGraphEdit.change(state.definition, state.catalog, path, patch)),
+      onValueChange: (path, valuePath, action) => applyGraphEdit(() =>
+        ExpressionForgeGraphEdit.editValue(state.definition, state.catalog, path, valuePath, action), true),
       onSource: (path, entityId) => {
         state.pendingSourcePath = path;
         state.pendingSourceEntity = entityId || null;

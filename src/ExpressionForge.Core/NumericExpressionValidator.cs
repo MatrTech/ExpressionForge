@@ -89,6 +89,13 @@ internal static class NumericExpressionValidator
                         "Runtime numeric values must be within ±1e12 and have at most six decimal places.", owner));
                 }
                 break;
+            case TryParseDecimalExpression parsed:
+                var source = entity.Properties.FirstOrDefault(p => p.Id == parsed.Field);
+                if (source is null)
+                    issues.Add(new(path + ".field", "unknownField", "Unknown or inaccessible source text field.", owner));
+                else if (source.DataType != "string")
+                    issues.Add(new(path + ".field", "invalidValueType", "Decimal parsing requires a string field.", owner));
+                break;
             case StringLengthExpression length:
                 var stringField = entity.Properties.FirstOrDefault(p => p.Id == length.Field);
                 if (stringField is null)

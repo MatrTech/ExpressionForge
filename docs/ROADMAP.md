@@ -81,7 +81,9 @@ Example:
 
 **Increment 4 — typed string/date functions:** Added `stringLength` and `dateDiffDays` numeric-value nodes, composable in the existing numeric tree. String length follows SQL Server `LEN` semantics; date differences count signed calendar-day boundaries between fields of matching date/dateTime types. Missing, inaccessible, or wrong-type fields are rejected before SQL generation, including in nested collection scopes. Both functions preserve NULL semantics, and the existing 16-level/256-node budgets apply. Guided/Blueprint expose common field-and-threshold controls. Unit, real SQL Server, editor and Chromium tests cover these behaviors.
 
-This is a development increment, **not a package release**. Next: explicit type conversions, richer typed value sockets and numeric-overflow policy hardening.
+**Increment 5 — explicit decimal conversion and composable value editing:** The new `tryParseDecimal` numeric-value node safely converts an approved string field using `TRY_CONVERT(decimal(28,6), column)`. Invalid/NULL text and overflow yield NULL; no user SQL or unregistered identifiers are allowed. Guided and Blueprint can create simple conversion predicates. Blueprint's advanced value-tree inspector supports typed replacement, adding/wrapping arithmetic, changing field/parameter/number inputs, and unwrapping composed expressions. The edit operations work on a single immutable canonical AST and check metadata and numeric restrictions. Node, .NET unit, Chromium, and real SQL Server 2022 tests cover typed scopes, nested expressions, NULL/invalid conversions and undo.
+
+This is a development increment, **not a package release**. Next: explicit conversions for more value types, richer visual value sockets, provider-neutral conversion semantics, and overflow-policy hardening.
 
 ## Dependencies
 

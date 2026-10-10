@@ -11,6 +11,7 @@ namespace ExpressionForge.Core;
 [JsonDerivedType(typeof(NumericBinaryExpression), "numericBinary")]
 [JsonDerivedType(typeof(StringLengthExpression), "stringLength")]
 [JsonDerivedType(typeof(DateDiffDaysExpression), "dateDiffDays")]
+[JsonDerivedType(typeof(TryParseDecimalExpression), "tryParseDecimal")]
 public abstract record NumericValueExpression;
 
 public sealed record NumericFieldExpression : NumericValueExpression
@@ -47,6 +48,12 @@ public sealed record DateDiffDaysExpression : NumericValueExpression
 {
     public required string StartField { get; init; }
     public required string EndField { get; init; }
+}
+
+/// <summary>Attempts to convert a catalog-approved text field to decimal(28,6). Invalid text yields NULL.</summary>
+public sealed record TryParseDecimalExpression : NumericValueExpression
+{
+    public required string Field { get; init; }
 }
 
 /// <summary>Compares two numerical expressions in the current entity/collection scope.</summary>

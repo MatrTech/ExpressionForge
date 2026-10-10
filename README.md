@@ -62,6 +62,24 @@ Do not check connection strings, passwords or SQL Server credentials into source
 
 An expanded example lives in [`examples/customer-query.json`](examples/customer-query.json). The [interactive advanced example gallery](https://matrtech.github.io/ExpressionForge/#examples) provides five complex ASTs with runtime bindings; the same fixtures are validated and executed in CI.
 
+**Explicit conversion and value-tree editing (v0.5 development):** The typed `tryParseDecimal` numeric value converts a metadata-approved string field to `decimal(28,6)` through SQL Server `TRY_CONVERT`. Malformed text, overflow and NULL inputs produce NULL, preserving SQL three-valued comparisons. No arbitrary type names or SQL conversion snippets can be supplied by an AST.
+
+```json
+{
+  "type": "arithmeticComparison",
+  "left": {
+    "type": "numericBinary",
+    "operator": "add",
+    "left": { "type": "tryParseDecimal", "field": "BalanceText" },
+    "right": { "type": "numericLiteral", "value": 100 }
+  },
+  "operator": "greaterThan",
+  "right": { "type": "numericLiteral", "value": 250 }
+}
+```
+
+In Blueprint, expand an arithmetic node and open **Advanced value tree** to replace, wrap, unwrap and edit the numeric operands recursively. The same metadata scope, maximum depth, numeric precision rules, validation, and immutable AST apply. The Guided editor remains optimized for straightforward conversions and calculations. `tryParseDecimal` is SQL Server-specific in this compiler; equivalent semantics must be defined per provider before adopting a second database backend.
+
 **String and date functions (v0.5 development):** Typed numeric values now include `stringLength` and `dateDiffDays`, which can be used wherever a numeric value is allowed, including inside arithmetic trees and collection predicates. Both reference approved fields in the active entity scope. For SQL Server, `stringLength` follows `LEN` semantics (trailing ordinary spaces are not counted), while `dateDiffDays` counts signed day boundaries between fields of matching `date` or `dateTime` types. SQL NULL inputs propagate to NULL; comparisons with NULL do not select rows.
 
 ```json

@@ -206,6 +206,37 @@ test('Blueprint adds text-length function and safely updates its threshold', asy
   assert.deepEqual((await definition(page)).query, before.query);
 });
 
+test('Blueprint converts a text field safely and composes a nested value tree', async t => {
+  const page = await openShowcase(t);
+  const original = await definition(page);
+  await page.locator('.blueprint-palette-select').selectOption({ label: 'Parse decimal from text' });
+  await page.locator('.blueprint-palette').getByRole('button', { name: /Add condition/ }).click();
+  let ast = await definition(page);
+  assert.deepEqual(ast.query.expressions.at(-1).left, { type: 'tryParseDecimal', field: 'Name' });
+  const card = page.locator('.blueprint-arithmeticComparison').filter({ hasText: 'Decimal?(Name)' }).last();
+  await card.locator('.blueprint-expand').click();
+  const details = page.locator('.blueprint-value-tree');
+  await details.locator('summary').click();
+  await page.waitForFunction(() => document.querySelector('.blueprint-value-tree')?.open === true);
+  await details.locator('[data-value-path="left"]').getByRole('button', { name: /Wrap in calculation/ }).first().click();
+
+  ast = await definition(page);
+  const left = ast.query.expressions.at(-1).left;
+  assert.equal(left.type, 'numericBinary');
+  assert.deepEqual(left.left, { type: 'tryParseDecimal', field: 'Name' });
+  assert.equal(left.operator, 'add');
+
+  await page.locator('.blueprint-value-tree').getByRole('combobox', { name: 'Right operand kind left.right' })
+    .selectOption('numericField');
+  ast = await definition(page);
+  assert.equal(ast.query.expressions.at(-1).left.right.type, 'numericField');
+  assert.equal(ast.query.expressions.at(-1).left.right.field, 'Id');
+  await page.locator('#undo-edit').click();
+  await page.locator('#undo-edit').click();
+  await page.locator('#undo-edit').click();
+  assert.deepEqual((await definition(page)).query, original.query);
+});
+
 test('mobile viewport and keyboard node move remain operable', async t => {
   const page = await openShowcase(t, { width: 390, height: 844 });
   const before = await definition(page);
