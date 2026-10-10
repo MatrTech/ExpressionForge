@@ -88,15 +88,6 @@ public sealed class SqlServerSemanticsTests
                 (4, 4, 8, N'Open'), (5, 5, 40, N'Closed'), (6, 6, 18, N'Open');
             """,
             """
-            UPDATE dbo.Customers SET
-                StartedAt = CASE Id
-                    WHEN 1 THEN '2026-01-01' WHEN 2 THEN '2026-01-01'
-                    WHEN 3 THEN '2026-02-10' WHEN 5 THEN '2026-03-01' END,
-                FinishedAt = CASE Id
-                    WHEN 1 THEN '2026-01-11' WHEN 2 THEN '2026-01-03'
-                    WHEN 3 THEN '2026-02-01' WHEN 5 THEN '2026-03-08' END;
-            """,
-            """
             INSERT INTO dbo.Customers (Id, FirstName, Age, IsActive) VALUES
                 (1, N'John', 27, 1), (2, N'John', 16, 0), (3, N'Alice', 34, 1),
                 (4, N'John', 17, 1), (5, NULL, 40, 1);
@@ -104,6 +95,15 @@ public sealed class SqlServerSemanticsTests
                 (1, 1, 160.00, N'Completed'), (2, 1, 25.00, N'Pending'),
                 (3, 2, 15.00, N'Pending'), (4, 3, 250.00, N'Completed'),
                 (5, 4, 120.00, NULL);
+            """,
+            """
+            UPDATE dbo.Customers SET
+                StartedAt = CASE Id
+                    WHEN 1 THEN '2026-01-01' WHEN 2 THEN '2026-01-01'
+                    WHEN 3 THEN '2026-02-10' WHEN 5 THEN '2026-03-01' END,
+                FinishedAt = CASE Id
+                    WHEN 1 THEN '2026-01-11' WHEN 2 THEN '2026-01-03'
+                    WHEN 3 THEN '2026-02-01' WHEN 5 THEN '2026-03-08' END;
             """
         };
 
