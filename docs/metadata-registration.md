@@ -9,11 +9,11 @@ The `QueryCatalogBuilder` validates an entire catalog before it can serve querie
 For the supplied [Project/Task catalog](../examples/project-catalog.json), run the API from the repository root:
 
 ```bash
-dotnet run --project src/ExpressionForge.Api --urls http://localhost:5054 -- \
-  ExpressionForge:CatalogFile=examples/project-catalog.json
+export ExpressionForge__CatalogFile="$(pwd)/examples/project-catalog.json"
+dotnet run --project src/ExpressionForge.Api --urls http://localhost:5054
 ```
 
-Alternatively, set `ExpressionForge__CatalogFile` to an absolute file path in your deployment environment. Relative paths are resolved against the ASP.NET Core content root; adjust accordingly. The demo Customer/Order catalog is used when the setting is absent.
+Set `ExpressionForge__CatalogFile` to the absolute path of the trusted catalog file in your deployment environment. Relative paths are resolved against the ASP.NET Core content root. The demo Customer/Order catalog is used when the setting is absent.
 
 ```csharp
 var catalog = new QueryCatalogBuilder()
