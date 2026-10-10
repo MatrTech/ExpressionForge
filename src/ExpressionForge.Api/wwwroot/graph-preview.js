@@ -32,6 +32,7 @@
     if (value.type === 'numericLiteral') return String(value.value);
     if (value.type === 'numericParameter') return '@' + String(value.parameter);
     if (value.type === 'stringLength') return 'Length(' + String(value.field) + ')';
+    if (value.type === 'tryParseDecimal') return 'Decimal?(' + String(value.field) + ')';
     if (value.type === 'dateDiffDays') return 'Days(' + String(value.startField) + ', ' + String(value.endField) + ')';
     if (value.type === 'numericBinary')
       return '(' + numericText(value.left) + ' ' + value.operator + ' ' + numericText(value.right) + ')';
@@ -70,6 +71,115 @@
     }
     visit(graph.rootNodeKey, 0, new Set());
     return depths;
+  }
+
+  const openedValueTrees = new Set();
+  function numericValueEditor(host, expression, meta, predicatePath, options) {
+    const api = typeof globalThis !== 'undefined' ? globalThis.ExpressionForgeNumericTree : null;
+    if (!api || !options.onValueChange) return;
+    const details = el('details', 'blueprint-value-tree');
+    const summary = el('summary', '', 'Advanced value tree · compose expressions');
+    details.append(summary);
+    details.open = openedValueTrees.has(predicatePath);
+    details.addEventListener('toggle', () => {
+      if (details.open) openedValueTrees.add(predicatePath);
+      else openedValueTrees.delete(predicatePath);
+    });
+
+    const categories = api.choices(options.catalog, meta.id);
+    function selectField(label, path, key, value, fields) {
+      const row = el('label', 'blueprint-inspector-field');
+      row.append(el('span', '', label));
+      const select = el('select', 'control');
+      select.setAttribute('aria-label', label + ' ' + path);
+      for (const p of fields) {
+        const option = el('option', '', p.displayName || p.id);
+        option.value = p.id;
+        select.append(option);
+      }
+      select.value = value;
+      select.addEventListener('change', () =>
+        options.onValueChange(predicatePath, path, { kind: 'set', property: key, value: select.value }));
+      row.append(select);
+      return row;
+    }
+    function editableNumber(label, path, key, value, type) {
+      const row = el('label', 'blueprint-inspector-field');
+      row.append(el('span', '', label));
+      const input = el('input', 'control');
+      input.type = type;
+      if (type === 'number') input.step = 'any';
+      input.setAttribute('aria-label', label + ' ' + path);
+      input.value = String(value);
+      input.addEventListener('change', () => options.onValueChange(predicatePath, path,
+        { kind: 'set', property: key, value: type === 'number' ? Number(input.value) : input.value }));
+      row.append(input);
+      return row;
+    }
+    function visit(value, path, name, depth = 1) {
+      const frame = el('div', 'blueprint-value-node');
+      frame.dataset.valuePath = path;
+      const kind = el('label', 'blueprint-inspector-field');
+      kind.append(el('span', '', name));
+      const type = el('select', 'control');
+      type.setAttribute('aria-label', name + ' kind ' + path);
+      for (const choice of categories) {
+        const option = el('option', '', choice.label);
+        option.value = choice.type;
+        type.append(option);
+      }
+      type.value = value.type;
+      type.addEventListener('change', () => options.onValueChange(predicatePath, path,
+        { kind: 'replace', type: type.value }));
+      kind.append(type);
+      frame.append(kind);
+
+      if (value.type === 'numericBinary') {
+        const operations = el('label', 'blueprint-inspector-field');
+        operations.append(el('span', '', 'Operation'));
+        const select = el('select', 'control');
+        select.setAttribute('aria-label', 'Operation ' + path);
+        for (const op of api.operators) {
+          const option = el('option', '', { add: 'Add (+)', subtract: 'Subtract (−)',
+            multiply: 'Multiply (×)', divide: 'Divide (÷)' }[op]);
+          option.value = op;
+          select.append(option);
+        }
+        select.value = value.operator;
+        select.addEventListener('change', () => options.onValueChange(predicatePath, path,
+          { kind: 'set', property: 'operator', value: select.value }));
+        operations.append(select);
+        frame.append(operations);
+        frame.append(visit(value.left, path + '.left', 'Left operand', depth + 1));
+        frame.append(visit(value.right, path + '.right', 'Right operand', depth + 1));
+      } else if (value.type === 'numericLiteral') {
+        frame.append(editableNumber('Number', path, 'value', value.value, 'number'));
+      } else if (value.type === 'numericParameter') {
+        frame.append(editableNumber('Parameter name', path, 'parameter', value.parameter, 'text'));
+      } else if (['numericField','stringLength','tryParseDecimal'].includes(value.type)) {
+        const eligible = meta.properties.filter(p => value.type === 'numericField' ?
+          ['integer','decimal'].includes(p.dataType) : p.dataType === 'string');
+        frame.append(selectField('Field', path, 'field', value.field, eligible));
+      } else if (value.type === 'dateDiffDays') {
+        const startType = meta.properties.find(p => p.id === value.startField)?.dataType;
+        const eligible = meta.properties.filter(p => p.dataType === startType &&
+          ['date','dateTime'].includes(p.dataType));
+        frame.append(selectField('Start date', path, 'startField', value.startField, eligible));
+        frame.append(selectField('End date', path, 'endField', value.endField, eligible));
+      }
+
+      const actions = el('div', 'blueprint-value-actions');
+      if (depth < 13) actions.append(button('+ Wrap in calculation',
+        'Use this value as the left side of a new calculation', () =>
+          options.onValueChange(predicatePath, path, { kind: 'wrap', operator: 'add' })));
+      if (value.type === 'numericBinary') actions.append(button('− Unwrap',
+        'Replace the calculation with its left operand', () =>
+          options.onValueChange(predicatePath, path, { kind: 'unwrap' })));
+      frame.append(actions);
+      return frame;
+    }
+    details.append(visit(expression.left, 'left', 'Left value'), visit(expression.right, 'right', 'Right value'));
+    host.append(details);
   }
 
   function render(host, projection, activeGraphKey, onNavigate, options = {}) {
@@ -323,6 +433,8 @@
           inspector.append(el('p', 'blueprint-hint', 'This nested value expression can be edited in JSON mode.'));
         }
       }
+      if (selected.kind === 'arithmeticComparison' && meta)
+        numericValueEditor(inspector, item, meta, selected.path, options);
       if (selected.kind === 'fieldComparison' && meta) {
         const left = meta.properties.find(property => property.id === item.leftField);
         const right = meta.properties.find(property => property.id === item.rightField);
