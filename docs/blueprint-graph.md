@@ -83,3 +83,18 @@ This increment does **not** yet offer drawing wires by dragging sockets, arbitra
 1. Add drag-to-connect, richer insertion/removal, and undo/redo transaction history.
 2. Add browser-level pointer/keyboard and accessibility interaction tests.
 3. Publish CI-verified complex Blueprint demonstrations on GitHub Pages.
+
+
+## Increment 4 — Gesture editing and transaction history
+
+A v1 query expression remains an AST tree. Nodes do not become independent executable objects just because the UI supports free dragging.
+
+- **Drag-to-connect:** drag from a predicate output to an AND/OR input in the same graph. The editor previews a wire and highlights candidate input sockets. On drop it calls the immutable AST reconnect command, which rejects cross-scope connections, cycles and invalid orphaning. Clicking sockets remains a keyboard-friendly alternative.
+- **Insert on a wire:** each connection provides a small (+) action. Users can wrap the existing predicate in NOT or combine it with a metadata-approved comparison using a new AND/OR group. The existing predicate (including its ID and runtime parameter) is retained without silently changing SQL semantics.
+- **Delete:** remove a predicate subtree only if it belongs to a group with more than one child. Deleting the root or leaving an empty group is rejected, and subtree deletion requires confirmation. Undo restores the subtree.
+- **Undo and redo:** snapshots cover AST edits, runtime bindings and canvas layout. History is capped at 60 transactions, redoing is invalidated by a new edit, and catalog/entity switching resets the history boundary. Navigation alone is not a transaction. When text input is focused, browser-native text undo remains available.
+- **No AST format change:** editor gestures, history and presentation state never enter the query JSON or API requests.
+
+### Remaining acceptance gates
+
+Browser-level drag/keyboard/viewport integration and accessibility tests, richer operation examples on Pages, and full v0.4.0 release validation remain future work.
