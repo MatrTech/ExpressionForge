@@ -224,7 +224,7 @@
     viewport.addEventListener('lostpointercapture', endGesture);
 
     for (const [key, card] of cards) card.addEventListener('keydown', event => {
-      if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+      if (event.target !== card || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
       const distance = event.shiftKey ? 40 : 10;
       const offsets = { ArrowUp: [0, -distance], ArrowDown: [0, distance],
         ArrowLeft: [-distance, 0], ArrowRight: [distance, 0] };
