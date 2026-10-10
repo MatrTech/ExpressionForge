@@ -28,7 +28,7 @@ public sealed record OperatorMetadata(string Id, string DisplayName, IReadOnlyLi
 
 public sealed class QueryCatalog
 {
-    public string Version { get; } = "0.1.0";
+    public string Version { get; } = "0.2.0";
     public IReadOnlyList<EntityMetadata> Entities { get; }
     public IReadOnlyList<OperatorMetadata> Operators { get; }
 
