@@ -200,7 +200,7 @@ public sealed class SqlServerSemanticsTests
         while (await reader.ReadAsync(TestContext.CancellationToken))
             actual.Add(reader.GetInt32(0));
 
-        var expectedIds = expected.Length == 0 ? [] : expected.Split(',').Select(int.Parse).ToArray();
+        var expectedIds = expected.Length == 0 ? Array.Empty<int>() : expected.Split(',').Select(int.Parse).ToArray();
         CollectionAssert.AreEquivalent(expectedIds, actual.ToArray());
     }
 }
