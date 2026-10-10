@@ -33,6 +33,7 @@
     if (node.kind === 'not') return 'NOT';
     if (node.kind === 'collectionExpression')
       return String(data.collection || 'Collection') + '.' + String(data.quantifier || 'any').toUpperCase();
+    if (node.kind === 'fieldComparison') return String(data.leftField) + ' ' + String(data.operator) + ' ' + String(data.rightField);
     if (node.kind === 'expression') {
       const value = data.parameter !== undefined ? '@' + data.parameter :
         data.value === undefined ? '' : JSON.stringify(data.value);
@@ -254,6 +255,27 @@
       if (selected.kind === 'collectionExpression')
         control('Quantifier', [['any', 'Any'], ['all', 'All'], ['none', 'None']],
           item.quantifier, value => change('quantifier', value));
+      if (selected.kind === 'fieldComparison' && meta) {
+        const left = meta.properties.find(property => property.id === item.leftField);
+        const right = meta.properties.find(property => property.id === item.rightField);
+        const allowed = (candidate, other) => candidate.dataType === other?.dataType &&
+          candidate.operators.some(op => other.operators.includes(op) &&
+            (['equals', 'notEquals'].includes(op) ||
+              (['integer', 'decimal'].includes(candidate.dataType) &&
+                ['greaterThan', 'greaterThanOrEqual', 'lessThan', 'lessThanOrEqual'].includes(op))));
+        if (left && right) {
+          control('Left field', meta.properties.filter(p => allowed(p, right)).map(p => [p.id, p.displayName || p.id]),
+            item.leftField, value => change('leftField', value));
+          control('Right field', meta.properties.filter(p => allowed(left, p)).map(p => [p.id, p.displayName || p.id]),
+            item.rightField, value => change('rightField', value));
+          const permitted = left.operators.filter(op => right.operators.includes(op) &&
+            (['equals', 'notEquals'].includes(op) ||
+              (['integer', 'decimal'].includes(left.dataType) &&
+                ['greaterThan', 'greaterThanOrEqual', 'lessThan', 'lessThanOrEqual'].includes(op))));
+          control('Operator', permitted.map(op => [op, options.catalog.operators?.find(x => x.id === op)?.displayName || op]),
+            item.operator, value => change('operator', value));
+        }
+      }
       if (selected.kind === 'expression' && meta) {
         const property = meta.properties.find(p => p.id === item.field);
         control('Field', meta.properties.filter(p => p.operators?.length).map(p => [p.id, p.displayName || p.id]),
