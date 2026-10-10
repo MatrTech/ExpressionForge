@@ -24,6 +24,7 @@
       <div class="nav-links">
         <a href="#playground">Playground</a>
         <a href="#examples">Examples</a>
+        <a href="#metadata">Metadata</a>
         <a href="#features">Features</a>
         <a href="#architecture">Architecture</a>
         <a href="#roadmap">Roadmap</a>
@@ -132,8 +133,52 @@
       </div>
     </section>
 
+    <section class="metadata-section" id="metadata">
+      <div class="shell">
+        <div class="section-head">
+          <div><div class="section-kicker">03 / DYNAMIC METADATA — v0.3.0 IN DEVELOPMENT</div>
+            <h2>Your schema. The same expression engine.</h2>
+            <p>Register Project and Task entities without changing the visual editor or the JSON query contract. These fixtures are compiled by the real .NET engine in automated tests.</p>
+          </div>
+          <span class="demo-badge">DEVELOPMENT PREVIEW</span>
+        </div>
+        <div class="metadata-example-grid">
+          <article class="metadata-example-card">
+            <div class="metadata-example-heading"><span class="gallery-overline">01 · TRUSTED SERVER CONFIGURATION</span><span class="gallery-chip">Metadata</span></div>
+            <h3>Register a domain</h3>
+            <p>Fields, types, supported operators and joins are declared on the server.</p>
+            <div class="metadata-schema">
+              <div class="metadata-entity"><strong>Project</strong><span>Id <em>integer</em></span><span>Name <em>string</em></span><span>Budget <em>decimal</em></span><span>Archived <em>boolean</em></span></div>
+              <div class="metadata-relation"><span>1</span><span class="metadata-relation-line"></span><span>many</span><small>Tasks</small></div>
+              <div class="metadata-entity"><strong>Task</strong><span>ProjectId <em>integer</em></span><span>Hours <em>decimal</em></span><span>State <em>string</em></span></div>
+            </div>
+            <a class="inline-link" href="https://github.com/MatrTech/ExpressionForge/blob/main/examples/project-catalog.json">View registered catalog JSON ↗</a>
+          </article>
+          <article class="metadata-example-card">
+            <div class="metadata-example-heading"><span class="gallery-overline">02 · REUSABLE NESTED QUERY</span><span class="gallery-chip">AST v1</span></div>
+            <h3>Find active, well-funded projects</h3>
+            <p>Projects above a budget threshold with at least one open task requiring more than a given number of hours.</p>
+            <div class="metadata-logic">
+              <div class="metadata-logic-node">AND <small>Project</small></div>
+              <div class="metadata-logic-children">
+                <div>Archived <strong>= false</strong></div>
+                <div>Budget <strong>≥ @minimumBudget</strong></div>
+                <div class="metadata-logic-nested">Tasks · ANY
+                  <div>State <strong>= "Open"</strong></div>
+                  <div>Hours <strong>&gt; @minimumHours</strong></div>
+                </div>
+              </div>
+            </div>
+            <div class="metadata-example-values"><span>minimumBudget <strong>10,000</strong></span><span>minimumHours <strong>12</strong></span></div>
+            <a class="inline-link" href="https://github.com/MatrTech/ExpressionForge/blob/main/examples/project-query.json">View bound query JSON ↗</a>
+          </article>
+        </div>
+        <p class="demo-disclaimer">Catalog mappings are trusted server configuration, not browser input. This website illustrates the validated fixtures; database execution is available only in the hosted .NET API with SQL Server configured.</p>
+      </div>
+    </section>
+
     <section class="features-section shell" id="features">
-      <div class="section-kicker">03 / CAPABILITIES</div><h2>Built for expressive queries.<br><span class="muted-heading">Engineered for control.</span></h2>
+      <div class="section-kicker">04 / CAPABILITIES</div><h2>Built for expressive queries.<br><span class="muted-heading">Engineered for control.</span></h2>
       <div class="feature-grid">
         <article class="feature"><div class="feature-icon violet">⌘</div><h3>Composable expression trees</h3><p>Combine AND, OR, NOT and collection predicates into a recursive, versioned JSON definition.</p><span class="feature-tag">AST v1</span></article>
         <article class="feature"><div class="feature-icon cyan">▤</div><h3>Metadata-first design</h3><p>Entity fields, relationships and allowed operators are described by the backend—not embedded in the editor.</p><span class="feature-tag">CATALOG</span></article>
@@ -145,15 +190,15 @@
     </section>
 
     <section class="architecture-section" id="architecture">
-      <div class="shell architecture-grid"><div><div class="section-kicker">04 / ARCHITECTURE</div><h2>One model.<br><span class="muted-heading">Clear boundaries.</span></h2><p>The editor describes intent. The engine validates structure and types. The compiler turns validated expressions into SQL Server queries with bound parameters.</p><a class="inline-link" href="https://github.com/MatrTech/ExpressionForge/blob/main/docs/architecture.md">Read architecture notes ↗</a></div>
+      <div class="shell architecture-grid"><div><div class="section-kicker">05 / ARCHITECTURE</div><h2>One model.<br><span class="muted-heading">Clear boundaries.</span></h2><p>The editor describes intent. The engine validates structure and types. The compiler turns validated expressions into SQL Server queries with bound parameters.</p><a class="inline-link" href="https://github.com/MatrTech/ExpressionForge/blob/main/docs/architecture.md">Read architecture notes ↗</a></div>
       <div class="pipeline" aria-label="ExpressionForge processing pipeline"><div class="pipeline-step"><span>01</span><strong>Visual editor</strong><small>Metadata-driven inputs</small></div><div class="pipeline-arrow" aria-hidden="true">↓</div><div class="pipeline-step"><span>02</span><strong>Versioned JSON AST</strong><small>Portable query definition</small></div><div class="pipeline-arrow" aria-hidden="true">↓</div><div class="pipeline-step"><span>03</span><strong>Validation &amp; typing</strong><small>Allowlisted fields and operators</small></div><div class="pipeline-arrow" aria-hidden="true">↓</div><div class="pipeline-step highlight-step"><span>04</span><strong>SQL Server compiler</strong><small>Parameterized, bounded SELECT</small></div></div></div>
     </section>
 
-    <section class="roadmap-section shell" id="roadmap"><div class="section-head"><div><div class="section-kicker">05 / ROADMAP</div><h2>Build the foundation.<br><span class="muted-heading">Then unlock the canvas.</span></h2></div><div class="roadmap-links"><a class="inline-link" href="https://github.com/MatrTech/ExpressionForge/releases/tag/v0.2.0">v0.2.0 Release ↗</a><a class="inline-link" href="https://github.com/MatrTech/ExpressionForge/blob/main/docs/ROADMAP.md">Full roadmap ↗</a></div></div>
+    <section class="roadmap-section shell" id="roadmap"><div class="section-head"><div><div class="section-kicker">06 / ROADMAP</div><h2>Build the foundation.<br><span class="muted-heading">Then unlock the canvas.</span></h2></div><div class="roadmap-links"><a class="inline-link" href="https://github.com/MatrTech/ExpressionForge/releases/tag/v0.2.0">v0.2.0 Release ↗</a><a class="inline-link" href="https://github.com/MatrTech/ExpressionForge/blob/main/docs/ROADMAP.md">Full roadmap ↗</a></div></div>
       <div class="milestones"><div class="milestone done"><span class="milestone-index">0.1.0</span><div><strong>Foundation</strong><small>AST, metadata, validation, SQL compiler, editor</small></div><span class="milestone-status">FOUNDATION</span></div><div class="milestone done"><span class="milestone-index">0.2.0</span><div><strong>Expression correctness</strong><small>Node identity, runtime bindings, SQL Server integration tests</small></div><span class="milestone-status">RELEASED</span></div><div class="milestone current"><span class="milestone-index">0.3.0</span><div><strong>Dynamic metadata &amp; types</strong><small>Pluggable entity definitions and type resolution</small></div><span class="milestone-status">NEXT MILESTONE</span></div><div class="milestone"><span class="milestone-index">0.4.0</span><div><strong>Blueprint-style canvas</strong><small>Free-form nodes, typed sockets, drag &amp; drop</small></div><span class="milestone-status">PLANNED</span></div></div>
     </section>
 
-    <section class="get-started-section" id="get-started"><div class="shell start-grid"><div><div class="section-kicker">06 / GET STARTED</div><h2>Clone. Run. Compose.</h2><p>Run the actual editor and .NET API locally. Validation and SQL compilation work without a database; row preview requires SQL Server.</p><a class="button primary" href="https://github.com/MatrTech/ExpressionForge#try-it">Setup instructions ↗</a></div><div class="terminal"><div class="terminal-bar"><span class="terminal-lights"><i></i><i></i><i></i></span><span>terminal</span></div><pre><span class="terminal-comment"># Requires .NET 10 SDK</span>
+    <section class="get-started-section" id="get-started"><div class="shell start-grid"><div><div class="section-kicker">07 / GET STARTED</div><h2>Clone. Run. Compose.</h2><p>Run the actual editor and .NET API locally. Validation and SQL compilation work without a database; row preview requires SQL Server.</p><a class="button primary" href="https://github.com/MatrTech/ExpressionForge#try-it">Setup instructions ↗</a></div><div class="terminal"><div class="terminal-bar"><span class="terminal-lights"><i></i><i></i><i></i></span><span>terminal</span></div><pre><span class="terminal-comment"># Requires .NET 10 SDK</span>
 <span class="terminal-prompt">$</span> git clone https://github.com/MatrTech/ExpressionForge.git
 <span class="terminal-prompt">$</span> cd ExpressionForge
 <span class="terminal-prompt">$</span> dotnet restore ExpressionForge.slnx
