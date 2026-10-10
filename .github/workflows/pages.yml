@@ -34,6 +34,7 @@ jobs:
           test -s site/styles.css
           test -s site/app.js
           node --check site/app.js
+          node --check site/example-gallery.js
           node --test tests/ExpressionForge.Site.Tests/*.test.cjs
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
