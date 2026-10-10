@@ -211,12 +211,16 @@ public sealed class SqlServerSemanticsTests
     public async Task Execute_DateDiffDays_HandlesPositiveNegativeAndNullDates(string op, int threshold, string expected)
     {
         var baseCatalog = QueryCatalog.CreateDemo();
-        var catalog = new QueryCatalog(baseCatalog.Entities.Select(e => e.Id == "Customer" ? e with
+        var entities = baseCatalog.Entities.Select(e => e.Id == "Customer" ? e with
         {
             Properties = [.. e.Properties,
                 new PropertyMetadata("StartedAt", "Started", "date", true, []),
                 new PropertyMetadata("FinishedAt", "Finished", "date", true, [])]
-        } : e).ToArray(), baseCatalog.Operators);
+        } : e).ToArray();
+        var builder = new QueryCatalogBuilder();
+        foreach (var entity in entities) builder.AddEntity(entity);
+        foreach (var registeredOperator in baseCatalog.Operators) builder.AddOperator(registeredOperator);
+        var catalog = builder.Build();
         await AssertIds(new ArithmeticComparisonExpression
         {
             Left = new DateDiffDaysExpression { StartField = "StartedAt", EndField = "FinishedAt" },

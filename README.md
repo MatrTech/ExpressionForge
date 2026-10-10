@@ -79,6 +79,8 @@ An expanded example lives in [`examples/customer-query.json`](examples/customer-
 
 The editor offers **Text length** when a string field is available, and **Days between dates** when at least two compatible date fields are exposed. No arbitrary SQL functions or unchecked identifiers are accepted.
 
+Trusted catalog files may register `date` and `dateTime` fields with an empty `operators` array when they are only used by typed functions. Standard scalar comparison operators for date/dateTime are intentionally not exposed yet, because those conversions and binding semantics have not been implemented. All other property types still require at least one supported operator.
+
 **Typed arithmetic (v0.5 development):** The `arithmeticComparison` predicate compares nested numeric values. `numericField` references a metadata-approved integer/decimal property, `numericLiteral` is a parameterized number, and `numericBinary` combines two values using `add`, `subtract`, `multiply` or `divide`.
 
 ```json

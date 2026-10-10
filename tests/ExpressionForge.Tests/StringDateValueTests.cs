@@ -19,7 +19,10 @@ public sealed class StringDateValueTests
                 new PropertyMetadata("FinishedAt", "Finished", "date", true, []),
                 new PropertyMetadata("LastSeen", "Last seen", "dateTime", true, [])]
         } : entity).ToArray();
-        return new QueryCatalog(entities, demo.Operators);
+        var builder = new QueryCatalogBuilder();
+        foreach (var entity in entities) builder.AddEntity(entity);
+        foreach (var op in demo.Operators) builder.AddOperator(op);
+        return builder.Build();
     }
 
     private static QueryDefinition With(NumericValueExpression left) => new()
