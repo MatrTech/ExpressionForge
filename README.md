@@ -1,5 +1,7 @@
 # ExpressionForge
 
+**Project website:** https://matrtech.github.io/ExpressionForge/ · [Website source](site/) · [Deployment notes](docs/PAGES.md)
+
 **Build queries visually. Validate them structurally. Compile them safely.**
 
 ExpressionForge is a .NET 10 metadata-driven expression engine with a Blueprint-inspired web editor. Users compose nested predicates using blocks. The frontend discovers fields, relationships and operators from the backend, then sends a provider-independent JSON expression tree (AST) for validation and SQL Server compilation.
