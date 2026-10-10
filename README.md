@@ -113,6 +113,12 @@ The initial sample catalog is registered in `QueryCatalog.CreateDemo()` with `Cu
 
 Frontend metadata is presentation information, not an authorization boundary. The backend independently validates every request. The editor only supports the version 1 AST and loads all metadata upfront; future versions can offer lazy relationship metadata and arbitrary graph layouts.
 
+## Blueprint preview (v0.4.0 development)
+
+The editor now offers an **optional, read-only Blueprint preview** alongside the existing guided editor. It projects the same AST into typed predicate nodes, preserves collection scopes, and lets you inspect nested AND/OR and collection subgraphs using breadcrumbs. Guided editing remains the default. The SQL compiler, JSON contract, and backend validation are unchanged.
+
+This first increment is **not yet a free-form editable canvas**; pan/zoom, live socket rewiring and undo/redo remain planned. See the [graph projection design and acceptance boundaries](docs/blueprint-graph.md).
+
 ## Next milestones
 
 1. **v0.3.0:** Dynamic metadata providers, typed scope resolution, catalog versioning and authorization-aware discovery.
