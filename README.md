@@ -68,6 +68,7 @@ A `group` combines child predicates with `and`/`or`. An `expression` compares a 
 |---|---|---|
 | GET | `/api/query/metadata` | Frontend-safe entity, property, relationship and operator metadata |
 | GET | `/api/query/metadata/entities/{id}` | Metadata for one entity |
+| POST | `/api/query/metadata/scopes` | Resolve typed entity and field scopes throughout a nested AST |
 | POST | `/api/query/validate` | AST validation with JSON paths and error codes |
 | POST | `/api/query/describe` | Output schema (root columns for v0.1.0) |
 | POST | `/api/query/compile?limit=25` | SQL text, typed parameters and output schema |
@@ -101,11 +102,11 @@ The first v0.3.0 increment supports registering a trusted, server-side entity ca
 
 Try the [Project/Task catalog](examples/project-catalog.json) and its [nested parameterized query](examples/project-query.json), or see the [metadata registration guide](docs/metadata-registration.md). The public [metadata showcase](https://matrtech.github.io/ExpressionForge/#metadata) illustrates the example.
 
-Set `ExpressionForge__CatalogFile` to the absolute path of your trusted JSON catalog file before starting the API. SQL tables must exist in the configured database. Custom operator implementations, hot reload, permissions and database introspection are not part of this first increment.
+Set `ExpressionForge__CatalogFile` to the absolute path of your trusted JSON catalog file before starting the API. SQL tables must exist in the configured database. Custom operator implementations, hot reload and database introspection are not part of the current metadata milestone. The subsequent increments add catalog revision guards, typed nested scope discovery and optional JWT-authenticated role allowlists; see [catalog revision guide](docs/catalog-revisions-and-scopes.md) and [authorization guide](docs/authorization.md).
 
 ## Safety and current constraints
 
-The metadata registry explicitly lists allowed entities and fields; SQL table/relationship mappings stay server-side. Queries use only catalog-controlled identifiers and bind all scalar values as typed parameters. Root queries are explicitly projected to catalog fields, with `TOP (@take)` bounded to 100 results. Execution is read-only by convention and must use **least-privilege SQL credentials**—the engine does not grant or enforce database account permissions.
+The metadata registry explicitly lists allowed entities and fields; SQL table/relationship mappings stay server-side. When `ExpressionForge__AccessFile` is configured, validated JWT role claims control which entities, fields and relationships are visible and queryable; compiled SELECT projections and preview results exclude hidden columns. Without that setting the sample is an unrestricted development demo, not an appropriate production security configuration. Queries use only catalog-controlled identifiers and bind all scalar values as typed parameters. Root queries are explicitly projected to catalog fields, with `TOP (@take)` bounded to 100 results. Execution is read-only by convention and must use **least-privilege SQL credentials**—the engine does not grant or enforce database account permissions.
 
 The initial sample catalog is registered in `QueryCatalog.CreateDemo()` with `Customer` and `Order` entities; it's not database introspection. The catalog, authentication, tenant-specific authorization, schema migrations, execution cost governance and deployment configuration must be integrated before running against production data. SQL Server schema must match registered mappings.
 

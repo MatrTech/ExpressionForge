@@ -1,4 +1,5 @@
 using System.Data;
+using System.Security.Claims;
 using System.Text.Json;
 using ExpressionForge.Core;
 using Microsoft.Data.SqlClient;
@@ -240,6 +241,64 @@ public sealed class SqlServerSemanticsTests
         while (await reader.ReadAsync(TestContext.CancellationToken))
             ids.Add(reader.GetInt32(0));
         CollectionAssert.AreEquivalent(new[] { 1, 6 }, ids.ToArray());
+    }
+
+    [TestMethod]
+    public async Task Execute_AuthorizedCatalog_OnlyReturnsPermittedColumnsAndRows()
+    {
+        Assert.IsNotNull(_database);
+        var rules = QueryAccessCatalogs.Parse(_catalog, """
+            {
+              "roles": [{
+                "role": "analyst",
+                "entities": [
+                  { "entity": "Customer", "properties": ["Id", "Age"], "relationships": ["Orders"] },
+                  { "entity": "Order", "properties": ["Total"], "relationships": [] }
+                ]
+              }]
+            }
+            """);
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.Role, "analyst")], "verified-test-auth"));
+        var scoped = rules.ForUser(principal)!;
+        var definition = new QueryDefinition
+        {
+            Entity = "Customer",
+            Query = Collection("any", Compare("Total", "greaterThan", 100m))
+        };
+        var plan = new SqlServerQueryCompiler(scoped, new QueryValidator(scoped)).Compile(definition);
+        CollectionAssert.AreEqual(new[] { "Id", "Age" }, plan.Columns.Select(column => column.Name).ToArray());
+        Assert.IsFalse(plan.Sql.Contains("FirstName", StringComparison.Ordinal));
+
+        await using var connection = new SqlConnection(_database.GetConnectionString());
+        await connection.OpenAsync(TestContext.CancellationToken);
+        await using var command = new SqlCommand(plan.Sql, connection) { CommandTimeout = 30 };
+        foreach (var parameter in plan.Parameters)
+        {
+            var sqlParameter = command.Parameters.Add(parameter.Name, parameter.DbType switch
+            {
+                DbType.Int32 => SqlDbType.Int,
+                DbType.Decimal => SqlDbType.Decimal,
+                DbType.Boolean => SqlDbType.Bit,
+                DbType.String => SqlDbType.NVarChar,
+                _ => throw new NotSupportedException(parameter.DbType.ToString())
+            });
+            sqlParameter.Value = parameter.Value;
+            if (parameter.DbType == DbType.Decimal)
+            {
+                sqlParameter.Precision = 38;
+                sqlParameter.Scale = 10;
+            }
+        }
+
+        var ids = new List<int>();
+        await using var reader = await command.ExecuteReaderAsync(TestContext.CancellationToken);
+        Assert.AreEqual(2, reader.FieldCount);
+        Assert.AreEqual("Id", reader.GetName(0));
+        Assert.AreEqual("Age", reader.GetName(1));
+        while (await reader.ReadAsync(TestContext.CancellationToken))
+            ids.Add(reader.GetInt32(0));
+        CollectionAssert.AreEquivalent(new[] { 1, 3, 4 }, ids.ToArray());
     }
 
     private static ComparisonExpression Compare<T>(string field, string op, T value) => new()

@@ -1,51 +1,92 @@
-﻿using ExpressionForge.Api;
+using System.Text.Json;
+using ExpressionForge.Api;
 using ExpressionForge.Core;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 var builder = WebApplication.CreateBuilder(args);
-// Catalogs are trusted server-side configuration; clients can discover safe metadata but cannot supply SQL mappings.
 var catalogFile = builder.Configuration["ExpressionForge:CatalogFile"];
 var catalog = string.IsNullOrWhiteSpace(catalogFile)
     ? QueryCatalog.CreateDemo()
     : QueryCatalogFile.Load(Path.GetFullPath(catalogFile, builder.Environment.ContentRootPath));
-builder.Services.AddSingleton(catalog);
-builder.Services.AddSingleton<QueryValidator>();
-builder.Services.AddSingleton<QueryScopeResolver>();
-builder.Services.AddSingleton<SqlServerQueryCompiler>();
+
+// Access grants are trusted SERVER-SIDE configuration. No endpoint accepts role/grant data from clients.
+var accessFile = builder.Configuration["ExpressionForge:AccessFile"];
+var access = string.IsNullOrWhiteSpace(accessFile)
+    ? QueryAccessCatalogs.Unrestricted(catalog)
+    : QueryAccessCatalogs.Load(catalog, Path.GetFullPath(accessFile, builder.Environment.ContentRootPath));
+
+if (access.IsRestricted)
+{
+    var authority = builder.Configuration["ExpressionForge:Authorization:Authority"];
+    var audience = builder.Configuration["ExpressionForge:Authorization:Audience"];
+    if (!Uri.TryCreate(authority, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps ||
+        string.IsNullOrWhiteSpace(audience))
+        throw new InvalidOperationException("Restricted catalogs require an HTTPS JWT authority and an audience.");
+
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
+    {
+        options.Authority = authority;
+        options.Audience = audience;
+        options.RequireHttpsMetadata = true;
+    });
+    builder.Services.AddAuthorization();
+}
 builder.Services.AddSingleton<SqlServerQueryExecutor>();
 
 var app = builder.Build();
 app.UseDefaultFiles();
 app.UseStaticFiles();
-
-app.MapGet("/api/query/metadata", (QueryCatalog catalog) => Results.Ok(new
+if (access.IsRestricted)
 {
-    catalogVersion = catalog.Version,
-    catalogRevision = catalog.Revision,
-    entities = catalog.Entities,
-    operators = catalog.Operators,
-    expressionTypes = new[] { "expression", "group", "collectionExpression", "not" },
-    quantifiers = new[] { "any", "all", "none" },
-    limits = new { maxDepth = QueryValidator.MaximumDepth, maxNodes = QueryValidator.MaximumNodes, maxRows = SqlServerQueryCompiler.MaximumRows }
-}));
+    app.UseAuthentication();
+    app.UseAuthorization();
+}
 
-// Resolve nested entity and field scopes without requiring runtime parameter values.
-app.MapPost("/api/query/metadata/scopes", (QueryDefinition definition, QueryScopeResolver resolver) =>
-    Results.Ok(resolver.Resolve(definition)));
+var api = app.MapGroup("/api/query");
+if (access.IsRestricted) api.RequireAuthorization();
 
-app.MapGet("/api/query/metadata/entities/{id}", (string id, QueryCatalog catalog) =>
+// The same per-request catalog drives discovery, semantic validation, SQL projections and preview.
+// An anonymous/ungranted principal cannot produce a usable catalog in restricted mode.
+api.AddEndpointFilter(async (invocation, next) =>
 {
-    var entity = catalog.FindEntity(id);
+    var scoped = access.ForUser(invocation.HttpContext.User);
+    if (scoped is null) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    invocation.HttpContext.Items[typeof(QueryCatalog)] = scoped;
+    return await next(invocation);
+});
+
+api.MapGet("/metadata", (HttpContext http) =>
+{
+    var current = CurrentCatalog(http);
+    return Results.Ok(new
+    {
+        catalogVersion = current.Version,
+        catalogRevision = current.Revision,
+        entities = current.Entities,
+        operators = current.Operators,
+        expressionTypes = new[] { "expression", "group", "collectionExpression", "not" },
+        quantifiers = new[] { "any", "all", "none" },
+        limits = new { maxDepth = QueryValidator.MaximumDepth, maxNodes = QueryValidator.MaximumNodes, maxRows = SqlServerQueryCompiler.MaximumRows }
+    });
+});
+
+api.MapGet("/metadata/entities/{id}", (string id, HttpContext http) =>
+{
+    var entity = CurrentCatalog(http).FindEntity(id);
     return entity is null ? Results.NotFound(new { error = "Unknown entity." }) : Results.Ok(entity);
 });
 
-app.MapPost("/api/query/validate", (QueryDefinition definition, QueryValidator validator) =>
-    Results.Ok(validator.Validate(definition)));
+api.MapPost("/metadata/scopes", (QueryDefinition definition, HttpContext http) =>
+    Results.Ok(new QueryScopeResolver(CurrentCatalog(http)).Resolve(definition)));
 
-app.MapPost("/api/query/describe", (QueryDefinition definition, QueryCatalog catalog, QueryValidator validator) =>
+api.MapPost("/validate", (QueryDefinition definition, HttpContext http) =>
+    Results.Ok(CurrentValidator(http).Validate(definition)));
+
+api.MapPost("/describe", (QueryDefinition definition, HttpContext http) =>
 {
-    var validation = validator.Validate(definition);
+    var validation = CurrentValidator(http).Validate(definition);
     if (!validation.IsValid) return Results.UnprocessableEntity(validation);
-    var entity = catalog.FindEntity(definition.Entity)!;
+    var entity = CurrentCatalog(http).FindEntity(definition.Entity)!;
     return Results.Ok(new
     {
         entity = entity.Id,
@@ -53,72 +94,59 @@ app.MapPost("/api/query/describe", (QueryDefinition definition, QueryCatalog cat
     });
 });
 
-app.MapPost("/api/query/compile", (QueryDefinition definition, int? limit, SqlServerQueryCompiler compiler, QueryValidator validator) =>
-{
-    var validation = validator.Validate(definition);
-    if (!validation.IsValid) return Results.UnprocessableEntity(validation);
-    if (limit is < 1 or > SqlServerQueryCompiler.MaximumRows)
-        return Results.BadRequest(new { error = $"Limit must be between 1 and {SqlServerQueryCompiler.MaximumRows}." });
-    return Results.Ok(compiler.Compile(definition, limit ?? 25));
-});
+api.MapPost("/compile", (QueryDefinition definition, int? limit, HttpContext http) =>
+    Compile(definition, null, limit, http));
 
-app.MapPost("/api/query/preview", async (QueryDefinition definition, int? limit, SqlServerQueryCompiler compiler,
-    QueryValidator validator, SqlServerQueryExecutor executor, CancellationToken cancellationToken) =>
-{
-    var validation = validator.Validate(definition);
-    if (!validation.IsValid) return Results.UnprocessableEntity(validation);
-    if (limit is < 1 or > SqlServerQueryCompiler.MaximumRows)
-        return Results.BadRequest(new { error = $"Limit must be between 1 and {SqlServerQueryCompiler.MaximumRows}." });
-    if (!executor.IsConfigured)
-        return Results.Problem("Configure ConnectionStrings__ExpressionForge to enable database preview.", statusCode: 503);
-    var plan = compiler.Compile(definition, limit ?? 25);
-    try
-    {
-        return Results.Ok(await executor.ExecuteAsync(plan, cancellationToken));
-    }
-    catch (Microsoft.Data.SqlClient.SqlException)
-    {
-        return Results.Problem("SQL Server query execution failed. Check the database schema, permissions and connection.", statusCode: 502);
-    }
-});
+api.MapPost("/preview", (QueryDefinition definition, int? limit, HttpContext http,
+    SqlServerQueryExecutor executor, CancellationToken cancellationToken) =>
+    Preview(definition, null, limit, http, executor, cancellationToken));
 
+api.MapPost("/validate/bound", (BoundQueryRequest request, HttpContext http) =>
+    Results.Ok(CurrentValidator(http).Validate(request.Definition, request.Parameters)));
 
-// Bound endpoints accept runtime values separately from the saved query definition.
-// The existing unbound endpoints remain available for literal-only queries.
-app.MapPost("/api/query/validate/bound", (BoundQueryRequest request, QueryValidator validator) =>
-    Results.Ok(validator.Validate(request.Definition, request.Parameters)));
+api.MapPost("/compile/bound", (BoundQueryRequest request, int? limit, HttpContext http) =>
+    Compile(request.Definition, request.Parameters, limit, http));
 
-app.MapPost("/api/query/compile/bound", (BoundQueryRequest request, int? limit,
-    SqlServerQueryCompiler compiler, QueryValidator validator) =>
-{
-    var validation = validator.Validate(request.Definition, request.Parameters);
-    if (!validation.IsValid) return Results.UnprocessableEntity(validation);
-    if (limit is < 1 or > SqlServerQueryCompiler.MaximumRows)
-        return Results.BadRequest(new { error = $"Limit must be between 1 and {SqlServerQueryCompiler.MaximumRows}." });
-    return Results.Ok(compiler.Compile(request.Definition, limit ?? 25, request.Parameters));
-});
-
-app.MapPost("/api/query/preview/bound", async (BoundQueryRequest request, int? limit,
-    SqlServerQueryCompiler compiler, QueryValidator validator, SqlServerQueryExecutor executor, CancellationToken cancellationToken) =>
-{
-    var validation = validator.Validate(request.Definition, request.Parameters);
-    if (!validation.IsValid) return Results.UnprocessableEntity(validation);
-    if (limit is < 1 or > SqlServerQueryCompiler.MaximumRows)
-        return Results.BadRequest(new { error = $"Limit must be between 1 and {SqlServerQueryCompiler.MaximumRows}." });
-    if (!executor.IsConfigured)
-        return Results.Problem("Configure ConnectionStrings__ExpressionForge to enable database preview.", statusCode: 503);
-    var plan = compiler.Compile(request.Definition, limit ?? 25, request.Parameters);
-    try
-    {
-        return Results.Ok(await executor.ExecuteAsync(plan, cancellationToken));
-    }
-    catch (Microsoft.Data.SqlClient.SqlException)
-    {
-        return Results.Problem("SQL Server query execution failed. Check the database schema, permissions and connection.", statusCode: 502);
-    }
-});
+api.MapPost("/preview/bound", (BoundQueryRequest request, int? limit, HttpContext http,
+    SqlServerQueryExecutor executor, CancellationToken cancellationToken) =>
+    Preview(request.Definition, request.Parameters, limit, http, executor, cancellationToken));
 
 app.MapFallbackToFile("index.html");
 app.Run();
+
+static QueryCatalog CurrentCatalog(HttpContext http) => (QueryCatalog)http.Items[typeof(QueryCatalog)]!;
+static QueryValidator CurrentValidator(HttpContext http) => new(CurrentCatalog(http));
+
+static IResult Compile(QueryDefinition definition, IReadOnlyDictionary<string, JsonElement>? bindings, int? limit, HttpContext http)
+{
+    var validator = CurrentValidator(http);
+    var validation = validator.Validate(definition, bindings);
+    if (!validation.IsValid) return Results.UnprocessableEntity(validation);
+    if (limit is < 1 or > SqlServerQueryCompiler.MaximumRows)
+        return Results.BadRequest(new { error = $"Limit must be between 1 and {SqlServerQueryCompiler.MaximumRows}." });
+    return Results.Ok(new SqlServerQueryCompiler(CurrentCatalog(http), validator).Compile(definition, limit ?? 25, bindings));
+}
+
+static async Task<IResult> Preview(QueryDefinition definition, IReadOnlyDictionary<string, JsonElement>? bindings, int? limit,
+    HttpContext http, SqlServerQueryExecutor executor, CancellationToken cancellationToken)
+{
+    var validator = CurrentValidator(http);
+    var validation = validator.Validate(definition, bindings);
+    if (!validation.IsValid) return Results.UnprocessableEntity(validation);
+    if (limit is < 1 or > SqlServerQueryCompiler.MaximumRows)
+        return Results.BadRequest(new { error = $"Limit must be between 1 and {SqlServerQueryCompiler.MaximumRows}." });
+    if (!executor.IsConfigured)
+        return Results.Problem("Configure ConnectionStrings__ExpressionForge to enable database preview.", statusCode: 503);
+
+    var plan = new SqlServerQueryCompiler(CurrentCatalog(http), validator).Compile(definition, limit ?? 25, bindings);
+    try
+    {
+        return Results.Ok(await executor.ExecuteAsync(plan, cancellationToken));
+    }
+    catch (Microsoft.Data.SqlClient.SqlException)
+    {
+        return Results.Problem("SQL Server query execution failed. Check the database schema, permissions and connection.", statusCode: 502);
+    }
+}
 
 public partial class Program { }

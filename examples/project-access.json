@@ -1,0 +1,29 @@
+{
+  "roles": [
+    {
+      "role": "project-reader",
+      "entities": [
+        {
+          "entity": "Project",
+          "properties": ["Id", "Name", "Archived"],
+          "relationships": []
+        }
+      ]
+    },
+    {
+      "role": "planner",
+      "entities": [
+        {
+          "entity": "Project",
+          "properties": ["Id", "Name", "Budget", "Archived"],
+          "relationships": ["Tasks"]
+        },
+        {
+          "entity": "Task",
+          "properties": ["Hours", "State"],
+          "relationships": []
+        }
+      ]
+    }
+  ]
+}
