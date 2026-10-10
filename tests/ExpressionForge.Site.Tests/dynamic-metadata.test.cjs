@@ -49,3 +49,27 @@ test("catalog revision and scope contracts are discoverable from the project web
   assert.match(docs, /catalogRevisionMismatch/);
   assert.match(docs, /Project \/ Task/);
 });
+
+test("authorization showcase matches the trusted Project and Task role grants", () => {
+  const html = read("site/index.html");
+  const rules = JSON.parse(read("examples/project-access.json"));
+  const reader = rules.roles.find(role => role.role === "project-reader");
+  const planner = rules.roles.find(role => role.role === "planner");
+  assert.ok(reader);
+  assert.ok(planner);
+  assert.deepEqual(reader.entities[0].properties, ["Id", "Name", "Archived"]);
+  assert.deepEqual(reader.entities[0].relationships, []);
+  assert.ok(planner.entities.find(entity => entity.entity === "Project").relationships.includes("Tasks"));
+  assert.deepEqual(planner.entities.find(entity => entity.entity === "Task").properties, ["Hours", "State"]);
+  assert.match(html, /project-reader/);
+  assert.match(html, /planner/);
+  assert.match(html, /examples\/project-access\.json/);
+  assert.match(html, /docs\/authorization\.md/);
+});
+
+test("authorization documentation does not mistake schema permissions for tenant isolation", () => {
+  const docs = read("docs/authorization.md");
+  assert.match(docs, /row-level security/);
+  assert.match(docs, /unrestricted/);
+  assert.match(docs, /JWT/);
+});
