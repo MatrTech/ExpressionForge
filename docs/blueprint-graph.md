@@ -113,3 +113,19 @@ Browser-level drag/keyboard/viewport integration and accessibility tests, richer
 Run `node scripts/prepare-blueprint-demo.cjs`, then serve `site/` using a local static HTTP server. For browser acceptance run `node --test tests/ExpressionForge.Browser.Tests/*.test.cjs` with Playwright/Chromium installed and the .NET API running on `127.0.0.1:5054`. The CI pipeline configures both servers and browsers automatically.
 
 This is a **development preview** until all CI checks pass and the release is explicitly tagged; GitHub Pages cannot replace the .NET compiler for real SQL.
+
+
+## First-run walkthrough
+
+A shared, versioned `onboarding.js` module introduces the editor when a catalog is ready. The static Pages showcase waits for its Project/Task fixture to be fully imported before opening the first-run tour.
+
+- Welcome: optional tour with **Not now**.
+- Guided editor: metadata-powered condition selection and automatic connection.
+- Blueprint: arranging nodes, panning and zooming without changing AST semantics.
+- Node chevron and sockets: editing and typed connections.
+- Collections: navigating to child entity scopes and returning with breadcrumbs.
+- Output: portable AST, undo/redo, and the .NET-only validation/compile capabilities.
+
+The tour is **informational**. It never adds predicates, changes node positions, sends API calls, or edits runtime bindings. Switching between the existing Guided and Blueprint modes is visual only. `Escape`, **Skip tour**, or **Finish** dismisses the overlay. **? Tutorial** always reopens it. Completion/dismissal uses localStorage key `expressionforge:first-run-tour:v1`, with a session-only fallback when storage is unavailable. Responsive layout and keyboard interactions are covered by Chromium tests.
+
+The UI and the Pages demo use identical canonical onboarding source, and Pages deployment is refreshed automatically when the shared editor source changes.
