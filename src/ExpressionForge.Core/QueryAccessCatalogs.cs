@@ -57,7 +57,6 @@ public sealed class QueryAccessCatalogs
                 var properties = new HashSet<string>(grant.Properties, StringComparer.Ordinal);
                 var relationships = new HashSet<string>(grant.Relationships, StringComparer.Ordinal);
                 if (properties.Count != grant.Properties.Count || relationships.Count != grant.Relationships.Count ||
-                    entity.Properties.Any(p => properties.Contains(p.Id)) is false && properties.Count > 0 ||
                     properties.Any(id => !entity.Properties.Any(p => p.Id == id)) ||
                     relationships.Any(id => !entity.Relationships.Any(r => r.Id == id)))
                     throw new InvalidOperationException($"Entity '{entity.Id}' has duplicate or unknown access members.");
