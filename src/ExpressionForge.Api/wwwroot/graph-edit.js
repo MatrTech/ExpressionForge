@@ -160,6 +160,13 @@
     target.node.expressions.push(source.node);
     return verify(next, catalog);
   }
+  function canRemove(definition, catalog, path) {
+    try {
+      const ref = locate(definition, catalog, path);
+      return ref.parent?.type === 'group' && ref.slot?.prop === 'expressions' &&
+        ref.parent.expressions.length > 1;
+    } catch { return false; }
+  }
   function remove(definition, catalog, path) {
     const next = clone(definition);
     const ref = locate(next, catalog, path);
@@ -191,5 +198,5 @@
       return { valid: true, reason: null };
     } catch (error) { return { valid: false, reason: error.message }; }
   }
-  return { locate, makePredicate, options, append, change, reconnect, remove, insert, canReconnect };
+  return { locate, makePredicate, options, append, change, reconnect, remove, insert, canReconnect, canRemove };
 });
