@@ -1,4 +1,7 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace ExpressionForge.Core;
 
@@ -29,6 +32,8 @@ public sealed record OperatorMetadata(string Id, string DisplayName, IReadOnlyLi
 public sealed class QueryCatalog
 {
     public string Version { get; } = "0.2.0";
+    // Opaque hash of logical metadata and SQL mappings, independent of registration order.
+    public string Revision { get; }
     public IReadOnlyList<EntityMetadata> Entities { get; }
     public IReadOnlyList<OperatorMetadata> Operators { get; }
 
@@ -36,6 +41,34 @@ public sealed class QueryCatalog
     {
         Entities = entities;
         Operators = operators;
+        Revision = CalculateRevision(entities, operators);
+    }
+
+    private static string CalculateRevision(IReadOnlyList<EntityMetadata> entities, IReadOnlyList<OperatorMetadata> operators)
+    {
+        var canonical = new
+        {
+            Entities = entities.OrderBy(e => e.Id, StringComparer.Ordinal).Select(e => new
+            {
+                e.Id, e.DisplayName, e.Schema, e.Table,
+                Properties = e.Properties.OrderBy(p => p.Id, StringComparer.Ordinal).Select(p => new
+                {
+                    p.Id, p.DisplayName, p.DataType, p.Nullable,
+                    Operators = p.Operators.OrderBy(id => id, StringComparer.Ordinal).ToArray()
+                }).ToArray(),
+                Relationships = e.Relationships.OrderBy(r => r.Id, StringComparer.Ordinal).Select(r => new
+                {
+                    r.Id, r.DisplayName, r.TargetEntity, r.ParentKey, r.ChildForeignKey
+                }).ToArray()
+            }).ToArray(),
+            Operators = operators.OrderBy(o => o.Id, StringComparer.Ordinal).Select(o => new
+            {
+                o.Id, o.DisplayName, o.RequiresValue,
+                SupportedTypes = o.SupportedTypes.OrderBy(type => type, StringComparer.Ordinal).ToArray()
+            }).ToArray()
+        };
+        var bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(canonical));
+        return "sha256:" + Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
     }
 
     public EntityMetadata? FindEntity(string? id) => Entities.FirstOrDefault(e => string.Equals(e.Id, id, StringComparison.Ordinal));

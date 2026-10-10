@@ -9,6 +9,7 @@ var catalog = string.IsNullOrWhiteSpace(catalogFile)
     : QueryCatalogFile.Load(Path.GetFullPath(catalogFile, builder.Environment.ContentRootPath));
 builder.Services.AddSingleton(catalog);
 builder.Services.AddSingleton<QueryValidator>();
+builder.Services.AddSingleton<QueryScopeResolver>();
 builder.Services.AddSingleton<SqlServerQueryCompiler>();
 builder.Services.AddSingleton<SqlServerQueryExecutor>();
 
@@ -19,12 +20,17 @@ app.UseStaticFiles();
 app.MapGet("/api/query/metadata", (QueryCatalog catalog) => Results.Ok(new
 {
     catalogVersion = catalog.Version,
+    catalogRevision = catalog.Revision,
     entities = catalog.Entities,
     operators = catalog.Operators,
     expressionTypes = new[] { "expression", "group", "collectionExpression", "not" },
     quantifiers = new[] { "any", "all", "none" },
     limits = new { maxDepth = QueryValidator.MaximumDepth, maxNodes = QueryValidator.MaximumNodes, maxRows = SqlServerQueryCompiler.MaximumRows }
 }));
+
+// Resolve nested entity and field scopes without requiring runtime parameter values.
+app.MapPost("/api/query/metadata/scopes", (QueryDefinition definition, QueryScopeResolver resolver) =>
+    Results.Ok(resolver.Resolve(definition)));
 
 app.MapGet("/api/query/metadata/entities/{id}", (string id, QueryCatalog catalog) =>
 {

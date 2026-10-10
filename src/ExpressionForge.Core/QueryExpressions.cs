@@ -6,6 +6,9 @@ namespace ExpressionForge.Core;
 public sealed record QueryDefinition
 {
     public int Version { get; init; } = 1;
+    // Optional catalog revision guard. Missing values preserve the original AST v1 contract.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? CatalogRevision { get; init; }
     public required string Entity { get; init; }
     public required QueryExpression Query { get; init; }
 }

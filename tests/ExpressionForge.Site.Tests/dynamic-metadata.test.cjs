@@ -39,3 +39,13 @@ test("public site links to both versioned custom catalog examples", () => {
   assert.match(html, /examples\/project-query\.json/);
   assert.match(html, /v0\.3\.0 IN DEVELOPMENT/);
 });
+
+test("catalog revision and scope contracts are discoverable from the project website", () => {
+  const html = read("site/index.html");
+  const docs = read("docs/catalog-revisions-and-scopes.md");
+  assert.match(html, /catalog-revisions-and-scopes\.md/);
+  assert.match(html, /v0\.2\.0 RELEASED/);
+  assert.match(html, /api\/query\/metadata\/scopes/);
+  assert.match(docs, /catalogRevisionMismatch/);
+  assert.match(docs, /Project \/ Task/);
+});

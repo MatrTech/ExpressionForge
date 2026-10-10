@@ -25,6 +25,8 @@ public sealed class QueryValidator(QueryCatalog catalog)
 
         if (definition.Version != 1)
             issues.Add(new("$.version", "unsupportedVersion", "Only query version 1 is supported."));
+        if (definition.CatalogRevision is not null && !string.Equals(definition.CatalogRevision, catalog.Revision, StringComparison.Ordinal))
+            issues.Add(new("$.catalogRevision", "catalogRevisionMismatch", "The query targets an outdated metadata catalog revision."));
 
         var entity = catalog.FindEntity(definition.Entity);
         if (entity is null)

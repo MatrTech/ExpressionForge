@@ -43,7 +43,9 @@ Final correctness review is complete, including diagnostic ownership, cross-type
 
 **Increment 1 — registered catalogs:** Add a validated `QueryCatalogBuilder`, trusted JSON catalog loading, and API configuration to replace the built-in demo with any supported entity schema. Validate operator compatibility, SQL mapping identifiers, relationship target/key types and read-only catalog snapshots. Include a Project/Task example on the website, compiler tests, and a real SQL Server 2022 execution test. The existing frontend discovers the new metadata through the same endpoint.
 
-**Next increments:** Catalog revision/fingerprinting and typed scope resolution; authorization-aware entity/field discovery; extensible metadata sources and frontend switching. Dynamic operator implementations, introspection and hot reload remain out of scope for this increment. Keep the [GitHub Pages example gallery](https://matrtech.github.io/ExpressionForge/#examples) updated with examples that are also exercised by .NET and SQL Server tests.
+**Increment 2 — catalog revisions and typed scopes:** A deterministic fingerprint detects changes in catalog mappings, data types and operators. Persisted AST v1 queries may pin an optional revision and receive structured rejection when it is stale. A typed-scope API resolves each nested expression's active entity, property types and allowed collections without runtime values or physical SQL mappings. See [catalog revisions and scopes](catalog-revisions-and-scopes.md).
+
+**Next increments:** Authorization-aware entity/field discovery; extensible metadata sources and frontend switching. Dynamic operator implementations, introspection and hot reload remain out of scope for this increment. Keep the [GitHub Pages example gallery](https://matrtech.github.io/ExpressionForge/#examples) updated with examples that are also exercised by .NET and SQL Server tests.
 
 ## Dependencies
 
