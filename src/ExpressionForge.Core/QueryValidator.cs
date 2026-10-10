@@ -55,7 +55,7 @@ public sealed class QueryValidator(QueryCatalog catalog)
     }
 
     private void VisitCore(QueryExpression expression, EntityMetadata entity, string path, int depth, ref int count,
-        HashSet<string> identifiers, List<QueryIssue> issues)
+        HashSet<string> identifiers, IReadOnlyDictionary<string, JsonElement>? parameters, List<QueryIssue> issues)
     {
         count++;
         if (count > MaximumNodes)
