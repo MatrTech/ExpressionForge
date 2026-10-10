@@ -12,5 +12,7 @@
     <PackageReference Include="SSH.NET" Version="2026.0.0" />
     <ProjectReference Include="../../src/ExpressionForge.Core/ExpressionForge.Core.csproj" />
     <None Include="../../site/examples.json" Link="examples.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../examples/project-catalog.json" Link="project-catalog.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../examples/project-query.json" Link="project-query.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
