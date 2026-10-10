@@ -66,8 +66,8 @@ public sealed class QueryScopeResolver(QueryCatalog catalog)
             return;
         }
 
-        var fieldType = expression is ComparisonExpression comparison
-            ? entity.Properties.FirstOrDefault(p => p.Id == comparison.Field)?.DataType
+        var fieldType = expression is ComparisonExpression candidate
+            ? entity.Properties.FirstOrDefault(p => p.Id == candidate.Field)?.DataType
             : null;
         scopes.Add(new(path, entity.Id, expression.Id, fieldType, entity.Properties, entity.Relationships));
         switch (expression)
