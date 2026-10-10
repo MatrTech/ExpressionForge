@@ -4,18 +4,18 @@ using ExpressionForge.Core;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 var builder = WebApplication.CreateBuilder(args);
+var registryFile = builder.Configuration["ExpressionForge:RegistryFile"];
 var catalogFile = builder.Configuration["ExpressionForge:CatalogFile"];
-var catalog = string.IsNullOrWhiteSpace(catalogFile)
-    ? QueryCatalog.CreateDemo()
-    : QueryCatalogFile.Load(Path.GetFullPath(catalogFile, builder.Environment.ContentRootPath));
-
-// Access grants are trusted SERVER-SIDE configuration. No endpoint accepts role/grant data from clients.
 var accessFile = builder.Configuration["ExpressionForge:AccessFile"];
-var access = string.IsNullOrWhiteSpace(accessFile)
-    ? QueryAccessCatalogs.Unrestricted(catalog)
-    : QueryAccessCatalogs.Load(catalog, Path.GetFullPath(accessFile, builder.Environment.ContentRootPath));
+if (!string.IsNullOrWhiteSpace(registryFile) && (!string.IsNullOrWhiteSpace(catalogFile) || !string.IsNullOrWhiteSpace(accessFile)))
+    throw new InvalidOperationException("RegistryFile cannot be combined with legacy CatalogFile or AccessFile settings.");
 
-if (access.IsRestricted)
+// Catalog sources and grants are trusted server configuration, never supplied by callers.
+var registry = string.IsNullOrWhiteSpace(registryFile)
+    ? CreateLegacyRegistry(catalogFile, accessFile, builder.Environment.ContentRootPath)
+    : QueryCatalogRegistryFile.Load(Path.GetFullPath(registryFile, builder.Environment.ContentRootPath));
+
+if (registry.IsRestricted)
 {
     var authority = builder.Configuration["ExpressionForge:Authorization:Authority"];
     var audience = builder.Configuration["ExpressionForge:Authorization:Audience"];
@@ -36,22 +36,38 @@ builder.Services.AddSingleton<SqlServerQueryExecutor>();
 var app = builder.Build();
 app.UseDefaultFiles();
 app.UseStaticFiles();
-if (access.IsRestricted)
+if (registry.IsRestricted)
 {
     app.UseAuthentication();
     app.UseAuthorization();
 }
 
-var api = app.MapGroup("/api/query");
-if (access.IsRestricted) api.RequireAuthorization();
+// List only those catalogs for which the current caller has grants.
+var listing = app.MapGet("/api/query/catalogs", (HttpContext http) => Results.Ok(new
+{
+    defaultCatalog = registry.DefaultId,
+    catalogs = registry.Discover(http.User)
+}));
+if (registry.IsRestricted) listing.RequireAuthorization();
 
-// The same per-request catalog drives discovery, semantic validation, SQL projections and preview.
-// An anonymous/ungranted principal cannot produce a usable catalog in restricted mode.
+var api = app.MapGroup("/api/query");
+if (registry.IsRestricted) api.RequireAuthorization();
+
+// A pinned AST catalog cannot be overridden by the query string.
 api.AddEndpointFilter(async (invocation, next) =>
 {
-    var scoped = access.ForUser(invocation.HttpContext.User);
-    if (scoped is null) return Results.StatusCode(StatusCodes.Status403Forbidden);
-    invocation.HttpContext.Items[typeof(QueryCatalog)] = scoped;
+    var http = invocation.HttpContext;
+    var definition = invocation.Arguments.OfType<QueryDefinition>().FirstOrDefault() ??
+        invocation.Arguments.OfType<BoundQueryRequest>().FirstOrDefault()?.Definition;
+    var queryId = http.Request.Query["catalog"].FirstOrDefault();
+    if (definition?.CatalogId is not null && queryId is not null &&
+        !string.Equals(definition.CatalogId, queryId, StringComparison.Ordinal))
+        return Results.BadRequest(new { error = "Catalog selection does not match the query definition." });
+    var selected = definition?.CatalogId ?? queryId ?? registry.DefaultId;
+    var scoped = registry.ForUser(selected, http.User);
+    if (scoped is null) return Results.NotFound(new { error = "Unknown or unavailable catalog." });
+    http.Items[typeof(QueryCatalog)] = scoped;
+    http.Items["catalogId"] = selected;
     return await next(invocation);
 });
 
@@ -60,6 +76,7 @@ api.MapGet("/metadata", (HttpContext http) =>
     var current = CurrentCatalog(http);
     return Results.Ok(new
     {
+        catalogId = (string)http.Items["catalogId"]!,
         catalogVersion = current.Version,
         catalogRevision = current.Revision,
         entities = current.Entities,
@@ -113,6 +130,17 @@ api.MapPost("/preview/bound", (BoundQueryRequest request, int? limit, HttpContex
 
 app.MapFallbackToFile("index.html");
 app.Run();
+
+static QueryCatalogRegistry CreateLegacyRegistry(string? catalogFile, string? accessFile, string contentRoot)
+{
+    var catalog = string.IsNullOrWhiteSpace(catalogFile)
+        ? QueryCatalog.CreateDemo()
+        : QueryCatalogFile.Load(Path.GetFullPath(catalogFile, contentRoot));
+    var access = string.IsNullOrWhiteSpace(accessFile)
+        ? QueryAccessCatalogs.Unrestricted(catalog)
+        : QueryAccessCatalogs.Load(catalog, Path.GetFullPath(accessFile, contentRoot));
+    return QueryCatalogRegistry.Single(access);
+}
 
 static QueryCatalog CurrentCatalog(HttpContext http) => (QueryCatalog)http.Items[typeof(QueryCatalog)]!;
 static QueryValidator CurrentValidator(HttpContext http) => new(CurrentCatalog(http));
