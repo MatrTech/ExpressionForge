@@ -4,6 +4,8 @@
 
 **Try the browser Blueprint editor:** https://matrtech.github.io/ExpressionForge/blueprint.html — edit the real Project/Task AST directly, without installing .NET. Validation, SQL generation and data preview require the .NET API.
 
+**New to ExpressionForge?** The shared editor offers a first-run tutorial with a brief guided walkthrough of adding conditions, navigating the Blueprint canvas, editing nodes, and exploring collection subgraphs. It is skippable, remembers your choice locally, and can be restarted from **? Tutorial** at any time. The tutorial does not change your query.
+
 **Build queries visually. Validate them structurally. Compile them safely.**
 
 ExpressionForge is a .NET 10 metadata-driven expression engine with a Blueprint-inspired web editor. Users compose nested predicates using blocks. The frontend discovers fields, relationships and operators from the backend, then sends a provider-independent JSON expression tree (AST) for validation and SQL Server compilation.
