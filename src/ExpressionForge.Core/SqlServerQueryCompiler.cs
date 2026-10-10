@@ -16,16 +16,16 @@ public sealed class SqlServerQueryCompiler(QueryCatalog catalog, QueryValidator 
 {
     public const int MaximumRows = 100;
 
-    public SqlQueryPlan Compile(QueryDefinition definition, int limit = 25)
+    public SqlQueryPlan Compile(QueryDefinition definition, int limit = 25, IReadOnlyDictionary<string, JsonElement>? parameters = null)
     {
         if (limit is < 1 or > MaximumRows)
             throw new ArgumentOutOfRangeException(nameof(limit), $"Result limit must be between 1 and {MaximumRows}.");
-        var validation = validator.Validate(definition);
+        var validation = validator.Validate(definition, parameters);
         if (!validation.IsValid)
             throw new QueryValidationException(validation.Issues);
 
         var entity = catalog.FindEntity(definition.Entity)!;
-        var state = new CompilationState();
+        var state = new CompilationState(parameters);
         state.Parameters.Add(new("@take", DbType.Int32, limit));
         var columns = entity.Properties.Select(p => new ResultColumn(p.Id, p.DataType, p.Nullable)).ToArray();
         var projection = string.Join(", ", entity.Properties.Select(p => $"[t0].{Quote(p.Id)} AS {Quote(p.Id)}"));
@@ -51,12 +51,13 @@ public sealed class SqlServerQueryCompiler(QueryCatalog catalog, QueryValidator 
         if (expression.Operator == "isNull") return $"({left} IS NULL)";
         if (expression.Operator == "isNotNull") return $"({left} IS NOT NULL)";
 
+        var suppliedValue = expression.Parameter is null ? expression.Value : state.Bindings![expression.Parameter];
         object value = field.DataType switch
         {
-            "string" => expression.Value.GetString()!,
-            "integer" => expression.Value.GetInt32(),
-            "decimal" => expression.Value.GetDecimal(),
-            "boolean" => expression.Value.GetBoolean(),
+            "string" => suppliedValue.GetString()!,
+            "integer" => suppliedValue.GetInt32(),
+            "decimal" => suppliedValue.GetDecimal(),
+            "boolean" => suppliedValue.GetBoolean(),
             _ => throw new NotSupportedException($"Unsupported type: {field.DataType}")
         };
         if (expression.Operator is "contains" or "startsWith" or "endsWith")
@@ -107,8 +108,9 @@ public sealed class SqlServerQueryCompiler(QueryCatalog catalog, QueryValidator 
     private static string Quote(string identifier) => "[" + identifier.Replace("]", "]]", StringComparison.Ordinal) + "]";
     private static string TableName(EntityMetadata entity) => $"{Quote(entity.Schema)}.{Quote(entity.Table)}";
 
-    private sealed class CompilationState
+    private sealed class CompilationState(IReadOnlyDictionary<string, JsonElement>? bindings)
     {
+        public IReadOnlyDictionary<string, JsonElement>? Bindings { get; } = bindings;
         public int NextAlias { get; set; }
         public List<QueryParameter> Parameters { get; } = [];
     }

@@ -161,7 +161,16 @@ function countNodes(expr) {
   if (['not', 'collectionExpression'].includes(expr.type)) return 1 + countNodes(expr.expression);
   return 1;
 }
+function ensureNodeIds(expression) {
+  if (!expression || typeof expression !== 'object') return;
+  if (expression.id === undefined) expression.id = crypto.randomUUID();
+  if (expression.type === 'group' && Array.isArray(expression.expressions))
+    expression.expressions.forEach(ensureNodeIds);
+  else if (['not', 'collectionExpression'].includes(expression.type))
+    ensureNodeIds(expression.expression);
+}
 function updateJson() {
+  ensureNodeIds(state.definition.query);
   $('json').value = JSON.stringify(state.definition, null, 2);
   $('node-count').textContent = `${countNodes(state.definition.query)} nodes`;
 }
@@ -226,8 +235,8 @@ async function start() {
   $('load-json').addEventListener('click', () => {
     try {
       const value = JSON.parse($('json').value);
-      if (!value || !entity(value.entity) || !value.query || value.query.type !== 'group')
-        throw new Error('Select a registered entity and a group root.');
+      if (!value || !entity(value.entity) || !value.query || !['group', 'expression', 'collectionExpression', 'not'].includes(value.query.type))
+        throw new Error('Select a registered entity and a supported expression root.');
       const previous = state.definition;
       try { state.definition = value; render(); } catch (error) { state.definition = previous; render(); throw error; }
       show('JSON loaded. Validate it before execution.', 'success');

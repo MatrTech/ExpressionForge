@@ -105,3 +105,9 @@ Frontend metadata is presentation information, not an authorization boundary. Th
 4. Logical query plan (IR), optimizer, provider adapters, parameter references, persisted definitions and version migrations.
 
 MIT licensed. See [LICENSE](LICENSE).
+
+## v0.2.0 development (in progress)
+
+The first correctness increment introduces optional stable expression node IDs (`id`). The editor assigns IDs when it serializes a tree; imported legacy JSON without IDs remains valid. The backend validates IDs for uniqueness and format and returns `nodeId` on validation issues when an ID is present. Node IDs are **editor identity only** and do not affect SQL semantics.
+
+Development takes place on `feature/v0.2.0-correctness` until the milestone's acceptance criteria are met. The package remains version `0.1.0` during development. See [roadmap](docs/ROADMAP.md).
