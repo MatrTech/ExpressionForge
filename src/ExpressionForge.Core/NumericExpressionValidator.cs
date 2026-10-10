@@ -89,6 +89,29 @@ internal static class NumericExpressionValidator
                         "Runtime numeric values must be within ±1e12 and have at most six decimal places.", owner));
                 }
                 break;
+            case StringLengthExpression length:
+                var stringField = entity.Properties.FirstOrDefault(p => p.Id == length.Field);
+                if (stringField is null)
+                    issues.Add(new(path + ".field", "unknownField", "Unknown or inaccessible string field.", owner));
+                else if (stringField.DataType != "string")
+                    issues.Add(new(path + ".field", "invalidValueType", "String length requires a string field.", owner));
+                break;
+            case DateDiffDaysExpression dates:
+                var start = entity.Properties.FirstOrDefault(p => p.Id == dates.StartField);
+                var end = entity.Properties.FirstOrDefault(p => p.Id == dates.EndField);
+                if (start is null)
+                    issues.Add(new(path + ".startField", "unknownField", "Unknown or inaccessible start date.", owner));
+                else if (start.DataType is not ("date" or "dateTime"))
+                    issues.Add(new(path + ".startField", "invalidValueType", "Start date must be date/dateTime.", owner));
+                if (end is null)
+                    issues.Add(new(path + ".endField", "unknownField", "Unknown or inaccessible end date.", owner));
+                else if (end.DataType is not ("date" or "dateTime"))
+                    issues.Add(new(path + ".endField", "invalidValueType", "End date must be date/dateTime.", owner));
+                if (start?.DataType is "date" or "dateTime" &&
+                    end?.DataType is "date" or "dateTime" && start.DataType != end.DataType)
+                    issues.Add(new(path + ".endField", "incompatibleFieldTypes",
+                        "Both date difference operands must use the same date/dateTime type.", owner));
+                break;
             case NumericBinaryExpression binary:
                 if (!Operations.Contains(binary.Operator, StringComparer.Ordinal))
                     issues.Add(new(path + ".operator", "invalidOperator", "Supported arithmetic: add, subtract, multiply, divide.", owner));
