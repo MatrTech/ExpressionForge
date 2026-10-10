@@ -8,7 +8,7 @@
 
   const clone = value => JSON.parse(JSON.stringify(value));
   const predicate = (entityId, cardinality = 'single') => ({ kind: 'predicate', entityId, cardinality });
-  const supported = new Set(['expression', 'fieldComparison', 'group', 'collectionExpression', 'not']);
+  const supported = new Set(['expression', 'fieldComparison', 'arithmeticComparison', 'group', 'collectionExpression', 'not']);
 
   function project(definition, catalog, options = {}) {
     if (!definition || !definition.query || !catalog || !Array.isArray(catalog.entities))
@@ -18,11 +18,25 @@
 
     const counts = new Map();
     let totalNodes = 0;
+    function countValue(value, depth) {
+      if (depth > 16) throw new Error('Numeric value expressions cannot exceed 16 levels.');
+      if (++totalNodes > 256) throw new Error('Expressions cannot exceed 256 nodes.');
+      if (!value || !['numericField', 'numericLiteral', 'numericBinary'].includes(value.type))
+        throw new Error('Unsupported numeric value expression.');
+      if (value.type === 'numericBinary') {
+        countValue(value.left, depth + 1);
+        countValue(value.right, depth + 1);
+      }
+    }
     function count(expression, depth = 1) {
       if (depth > 16) throw new Error('Expressions cannot exceed 16 levels of nesting.');
       if (++totalNodes > 256) throw new Error('Expressions cannot exceed 256 nodes.');
       if (!expression || !supported.has(expression.type)) throw new Error('Unsupported or missing AST expression.');
       if (typeof expression.id === 'string' && expression.id) counts.set(expression.id, (counts.get(expression.id) || 0) + 1);
+      if (expression.type === 'arithmeticComparison') {
+        countValue(expression.left, depth + 1);
+        countValue(expression.right, depth + 1);
+      }
       if (expression.type === 'group') {
         if (!Array.isArray(expression.expressions)) throw new Error('A group requires an expressions array.');
         expression.expressions.forEach(child => count(child, depth + 1));
