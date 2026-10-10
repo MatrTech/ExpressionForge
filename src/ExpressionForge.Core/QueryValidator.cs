@@ -14,7 +14,7 @@ public sealed class QueryValidator(QueryCatalog catalog)
     public const int MaximumDepth = 16;
     public const int MaximumNodes = 256;
 
-    public QueryValidationResult Validate(QueryDefinition? definition)
+    public QueryValidationResult Validate(QueryDefinition? definition, IReadOnlyDictionary<string, JsonElement>? parameters = null)
     {
         var issues = new List<QueryIssue>();
         if (definition is null)
@@ -36,16 +36,16 @@ public sealed class QueryValidator(QueryCatalog catalog)
         {
             var count = 0;
             var identifiers = new HashSet<string>(StringComparer.Ordinal);
-            Visit(definition.Query, entity, "$.query", 1, ref count, identifiers, issues);
+            Visit(definition.Query, entity, "$.query", 1, ref count, identifiers, parameters, issues);
         }
         return new(issues);
     }
 
     private void Visit(QueryExpression expression, EntityMetadata entity, string path, int depth, ref int count,
-        HashSet<string> identifiers, List<QueryIssue> issues)
+        HashSet<string> identifiers, IReadOnlyDictionary<string, JsonElement>? parameters, List<QueryIssue> issues)
     {
         var issueStart = issues.Count;
-        VisitCore(expression, entity, path, depth, ref count, identifiers, issues);
+        VisitCore(expression, entity, path, depth, ref count, identifiers, parameters, issues);
         // The deepest node assigns its identity first, so parent nodes only claim their own diagnostics.
         for (var i = issueStart; i < issues.Count; i++)
         {
@@ -81,7 +81,7 @@ public sealed class QueryValidator(QueryCatalog catalog)
         switch (expression)
         {
             case ComparisonExpression comparison:
-                ValidateComparison(comparison, entity, path, issues);
+                ValidateComparison(comparison, entity, path, parameters, issues);
                 break;
             case GroupExpression group:
                 if (group.Operator is not ("and" or "or"))
@@ -96,7 +96,7 @@ public sealed class QueryValidator(QueryCatalog catalog)
                     if (group.Expressions[i] is null)
                         issues.Add(new($"{path}.expressions[{i}]", "required", "An expression cannot be null."));
                     else
-                        Visit(group.Expressions[i], entity, $"{path}.expressions[{i}]", depth + 1, ref count, identifiers, issues);
+                        Visit(group.Expressions[i], entity, $"{path}.expressions[{i}]", depth + 1, ref count, identifiers, parameters, issues);
                 }
                 break;
             case CollectionExpression collection:
@@ -114,13 +114,13 @@ public sealed class QueryValidator(QueryCatalog catalog)
                 if (collection.Expression is null)
                     issues.Add(new(path + ".expression", "required", "A collection predicate is required."));
                 if (target is not null && collection.Expression is not null)
-                    Visit(collection.Expression, target, path + ".expression", depth + 1, ref count, identifiers, issues);
+                    Visit(collection.Expression, target, path + ".expression", depth + 1, ref count, identifiers, parameters, issues);
                 break;
             case NotExpression not:
                 if (not.Expression is null)
                     issues.Add(new(path + ".expression", "required", "A negated expression is required."));
                 else
-                    Visit(not.Expression, entity, path + ".expression", depth + 1, ref count, identifiers, issues);
+                    Visit(not.Expression, entity, path + ".expression", depth + 1, ref count, identifiers, parameters, issues);
                 break;
             default:
                 issues.Add(new(path, "unknownExpression", "Unsupported expression type."));
@@ -128,7 +128,8 @@ public sealed class QueryValidator(QueryCatalog catalog)
         }
     }
 
-    private static void ValidateComparison(ComparisonExpression expression, EntityMetadata entity, string path, List<QueryIssue> issues)
+    private static void ValidateComparison(ComparisonExpression expression, EntityMetadata entity, string path,
+        IReadOnlyDictionary<string, JsonElement>? parameters, List<QueryIssue> issues)
     {
         var field = entity.Properties.FirstOrDefault(p => p.Id == expression.Field);
         if (field is null)
@@ -142,9 +143,34 @@ public sealed class QueryValidator(QueryCatalog catalog)
             return;
         }
         if (expression.Operator is "isNull" or "isNotNull")
+        {
+            if (expression.Parameter is not null)
+                issues.Add(new(path + ".parameter", "unexpectedParameter", "Null checks cannot reference runtime parameters."));
             return;
+        }
+
+        if (expression.Parameter is not null && expression.Value.ValueKind != JsonValueKind.Undefined)
+        {
+            issues.Add(new(path, "ambiguousValue", "Specify either 'value' or 'parameter', not both."));
+            return;
+        }
 
         var value = expression.Value;
+        if (expression.Parameter is not null)
+        {
+            if (expression.Parameter.Length is < 1 or > 64 ||
+                !expression.Parameter.All(c => char.IsAsciiLetterOrDigit(c) || c is '_' or '-'))
+            {
+                issues.Add(new(path + ".parameter", "invalidParameterName", "Parameter names must be 1-64 ASCII letters, digits, '-' or '_'."));
+                return;
+            }
+
+            if (parameters is null || !parameters.TryGetValue(expression.Parameter, out value))
+            {
+                issues.Add(new(path + ".parameter", "missingParameter", $"Missing runtime parameter '{expression.Parameter}'."));
+                return;
+            }
+        }
         var isValid = field.DataType switch
         {
             "string" => value.ValueKind == JsonValueKind.String && value.GetString()!.Length <= 1024,
