@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "entity": "Customer",
+  "query": {
+    "type": "group",
+    "operator": "and",
+    "expressions": [
+      { "type": "expression", "field": "FirstName", "operator": "equals", "value": "John" },
+      {
+        "type": "group",
+        "operator": "or",
+        "expressions": [
+          { "type": "expression", "field": "Age", "operator": "greaterThan", "value": 18 },
+          { "type": "expression", "field": "IsActive", "operator": "equals", "value": true }
+        ]
+      },
+      {
+        "type": "collectionExpression",
+        "collection": "Orders",
+        "quantifier": "any",
+        "expression": {
+          "type": "expression",
+          "field": "Total",
+          "operator": "greaterThan",
+          "value": 100
+        }
+      }
+    ]
+  }
+}

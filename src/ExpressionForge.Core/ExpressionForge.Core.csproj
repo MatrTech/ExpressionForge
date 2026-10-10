@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>ExpressionForge.Core</PackageId>
+    <Description>Metadata-driven, type-validated recursive query expressions and parameterized SQL Server compilation.</Description>
+  </PropertyGroup>
+</Project>

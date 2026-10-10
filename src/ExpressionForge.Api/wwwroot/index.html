@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ExpressionForge — Query Designer</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-icon">◇</span><span>Expression<span class="accent">Forge</span></span><span class="version">v0.1.0</span></div>
+    <div class="top-actions">
+      <span id="connection" class="connection">Loading catalog…</span>
+      <button id="validate" class="button secondary">Validate</button>
+      <button id="compile" class="button primary">Compile SQL →</button>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <div class="eyebrow">SCHEMA EXPLORER</div>
+      <label class="field-label" for="entity">Query source</label>
+      <select id="entity" class="control"></select>
+      <div id="schema" class="schema"></div>
+      <div class="info"><strong>Metadata-driven</strong><p>Entities, fields, relationships and operators are loaded from the backend. This editor has no hardcoded domain schema.</p></div>
+    </aside>
+    <section class="workspace">
+      <div class="workspace-header">
+        <div><div class="eyebrow">EXPRESSION GRAPH</div><h1>Query canvas</h1><p>Build nested conditions by connecting expression blocks.</p></div>
+        <button id="reset" class="button ghost">↺ Reset</button>
+      </div>
+      <div id="graph" class="graph"></div>
+      <div class="workspace-footer"><span class="socket"></span> Predicate output <span class="divider-dot">•</span> All expressions compile into a single parameterized query.</div>
+    </section>
+    <aside class="inspector">
+      <div class="eyebrow">QUERY DEFINITION</div>
+      <div class="pane-title">Serialized AST <span id="node-count" class="tag"></span></div>
+      <textarea id="json" class="json-editor" spellcheck="false" aria-label="Query definition JSON"></textarea>
+      <div class="pane-actions"><button id="load-json" class="button secondary">Load JSON</button><button id="copy-json" class="button ghost">Copy JSON</button></div>
+      <div class="eyebrow section-heading">COMPILER OUTPUT</div>
+      <pre id="output" class="output">Press “Compile SQL” to generate a parameterized SQL Server query.</pre>
+      <div class="pane-actions"><button id="preview" class="button secondary">Preview data</button><label class="limit-label">Rows <input id="limit" type="number" min="1" max="100" value="25"></label></div>
+      <div id="message" class="message" aria-live="polite"></div>
+    </aside>
+  </main>
+</body>
+</html>

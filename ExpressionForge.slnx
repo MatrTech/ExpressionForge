@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="src/ExpressionForge.Core/ExpressionForge.Core.csproj" />
+  <Project Path="src/ExpressionForge.Api/ExpressionForge.Api.csproj" />
+  <Project Path="tests/ExpressionForge.Tests/ExpressionForge.Tests.csproj" />
+</Solution>
