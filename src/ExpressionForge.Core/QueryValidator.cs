@@ -68,6 +68,7 @@ public sealed class QueryValidator(QueryCatalog catalog)
         {
             "id" => issue.Code is "invalidNodeId" or "duplicateNodeId",
             "field" => issue.Code == "unknownField",
+            "leftField" or "rightField" => issue.Code == "unknownField",
             "operator" => issue.Code == "invalidOperator",
             "value" => issue.Code is "invalidValueType" or "unexpectedValue",
             "parameter" => issue.Code is "invalidParameterName" or "missingParameter" or "unexpectedParameter" or "conflictingParameterType",
@@ -108,6 +109,9 @@ public sealed class QueryValidator(QueryCatalog catalog)
         {
             case ComparisonExpression comparison:
                 ValidateComparison(comparison, entity, path, parameterTypes, parameters, issues);
+                break;
+            case FieldComparisonExpression fieldComparison:
+                ValidateFieldComparison(fieldComparison, entity, path, issues);
                 break;
             case GroupExpression group:
                 if (group.Operator is not ("and" or "or"))
@@ -151,6 +155,43 @@ public sealed class QueryValidator(QueryCatalog catalog)
             default:
                 issues.Add(new(path, "unknownExpression", "Unsupported expression type."));
                 break;
+        }
+    }
+
+    private static readonly HashSet<string> FieldEqualityOperators = new(StringComparer.Ordinal)
+    {
+        "equals", "notEquals"
+    };
+
+    private static readonly HashSet<string> FieldNumericOperators = new(StringComparer.Ordinal)
+    {
+        "equals", "notEquals", "greaterThan", "greaterThanOrEqual", "lessThan", "lessThanOrEqual"
+    };
+
+    private static void ValidateFieldComparison(FieldComparisonExpression expression, EntityMetadata entity, string path,
+        List<QueryIssue> issues)
+    {
+        var left = entity.Properties.FirstOrDefault(p => p.Id == expression.LeftField);
+        var right = entity.Properties.FirstOrDefault(p => p.Id == expression.RightField);
+        if (left is null)
+            issues.Add(new(path + ".leftField", "unknownField", $"Unknown left field '{expression.LeftField}' on '{entity.Id}'."));
+        if (right is null)
+            issues.Add(new(path + ".rightField", "unknownField", $"Unknown right field '{expression.RightField}' on '{entity.Id}'."));
+        if (left is null || right is null) return;
+        if (!string.Equals(left.DataType, right.DataType, StringComparison.Ordinal))
+        {
+            issues.Add(new(path + ".rightField", "incompatibleFieldTypes",
+                $"Fields '{left.Id}' and '{right.Id}' must have identical types."));
+            return;
+        }
+
+        var permitted = left.DataType is "integer" or "decimal" ? FieldNumericOperators : FieldEqualityOperators;
+        if (!permitted.Contains(expression.Operator) ||
+            !left.Operators.Contains(expression.Operator, StringComparer.Ordinal) ||
+            !right.Operators.Contains(expression.Operator, StringComparer.Ordinal))
+        {
+            issues.Add(new(path + ".operator", "invalidOperator",
+                $"Operator '{expression.Operator}' is not permitted for a comparison between '{left.Id}' and '{right.Id}'."));
         }
     }
 
