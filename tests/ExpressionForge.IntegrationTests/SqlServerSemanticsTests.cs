@@ -205,6 +205,68 @@ public sealed class SqlServerSemanticsTests
     }
 
     [TestMethod]
+    public async Task Execute_DivisionByZeroLiteral_ReturnsNoRowsWithoutSqlError()
+    {
+        await AssertIds(new ArithmeticComparisonExpression
+        {
+            Left = new NumericBinaryExpression
+            {
+                Operator = "divide",
+                Left = new NumericFieldExpression { Field = "Age" },
+                Right = new NumericLiteralExpression { Value = JsonSerializer.SerializeToElement(0m) }
+            },
+            Operator = "greaterThan",
+            Right = new NumericLiteralExpression { Value = JsonSerializer.SerializeToElement(10m) }
+        }, "");
+    }
+
+    [TestMethod]
+    [DataRow(0, "")]
+    [DataRow(2, "1,3,5")]
+    public async Task Execute_DivisionByRuntimeZeroOrPositive_ReturnsExpectedRows(int divisor, string expected)
+    {
+        var predicate = new ArithmeticComparisonExpression
+        {
+            Left = new NumericBinaryExpression
+            {
+                Operator = "divide",
+                Left = new NumericFieldExpression { Field = "Age" },
+                Right = new NumericParameterExpression { Parameter = "divisor" }
+            },
+            Operator = "greaterThan",
+            Right = new NumericLiteralExpression { Value = JsonSerializer.SerializeToElement(10m) }
+        };
+        var bindings = new Dictionary<string, JsonElement>
+        {
+            ["divisor"] = JsonSerializer.SerializeToElement((decimal)divisor)
+        };
+        await AssertIds(predicate, expected, bindings);
+    }
+
+    [TestMethod]
+    [DataRow(0, "")]
+    [DataRow(2, "1,3")]
+    public async Task Execute_DivisionWithinCollection_PreservesScopeAndZeroSemantics(int divisor, string expected)
+    {
+        var expression = new ArithmeticComparisonExpression
+        {
+            Left = new NumericBinaryExpression
+            {
+                Operator = "divide",
+                Left = new NumericFieldExpression { Field = "Total" },
+                Right = new NumericParameterExpression { Parameter = "divisor" }
+            },
+            Operator = "greaterThan",
+            Right = new NumericLiteralExpression { Value = JsonSerializer.SerializeToElement(75m) }
+        };
+        var bindings = new Dictionary<string, JsonElement>
+        {
+            ["divisor"] = JsonSerializer.SerializeToElement((decimal)divisor)
+        };
+        await AssertIds(Collection("any", expression), expected, bindings);
+    }
+
+    [TestMethod]
     public async Task Execute_RuntimeBinding_UsesTypedValueInCorrelatedCollection()
     {
         var query = Collection("any", new ComparisonExpression

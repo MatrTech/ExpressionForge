@@ -66,6 +66,7 @@ public sealed class SqlServerQueryCompiler(QueryCatalog catalog, QueryValidator 
         {
             NumericFieldExpression field => $"CONVERT(decimal(28,6), [{alias}].{Quote(entity.Properties.Single(p => p.Id == field.Field).Id)})",
             NumericLiteralExpression literal => BindNumeric(literal.Value.GetDecimal(), state),
+            NumericParameterExpression parameter => BindNumeric(state.Bindings![parameter.Parameter].GetDecimal(), state),
             NumericBinaryExpression binary => BuildNumericBinary(binary, entity, alias, state),
             _ => throw new NotSupportedException("Unsupported numeric value expression.")
         };
@@ -74,6 +75,12 @@ public sealed class SqlServerQueryCompiler(QueryCatalog catalog, QueryValidator 
     {
         var left = BuildNumeric(binary.Left, entity, alias, state);
         var right = BuildNumeric(binary.Right, entity, alias, state);
+        if (binary.Operator == "divide")
+        {
+            // A zero divisor produces NULL; comparisons with NULL do not select the row.
+            // NULLIF protects both literal and parameterized zero denominators, including within collections.
+            return $"({left} / NULLIF({right}, CONVERT(decimal(28,6), 0)))";
+        }
         var op = binary.Operator switch
         {
             "add" => "+", "subtract" => "-", "multiply" => "*",

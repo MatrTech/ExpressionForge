@@ -96,9 +96,9 @@ public sealed class ArithmeticExpressionTests
     }
 
     [TestMethod]
-    public void Validate_UnsupportedOperations_RejectsDivideAndUnknownComparison()
+    public void Validate_UnsupportedOperations_RejectsModuloAndUnknownComparison()
     {
-        var left = new NumericBinaryExpression { Operator = "divide", Left = Number(4), Right = Number(0) };
+        var left = new NumericBinaryExpression { Operator = "modulo", Left = Number(4), Right = Number(0) };
         var invalid = Definition(left, "equals", Number(1));
         Assert.AreEqual("invalidOperator", Validator.Validate(invalid).Issues.Single().Code);
         var other = Definition(Number(1), "contains", Number(2));

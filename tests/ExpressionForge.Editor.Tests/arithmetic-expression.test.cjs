@@ -51,7 +51,7 @@ test('numeric editor rejects non-numeric fields, invalid operations and imprecis
   const pointer = '$.query.expressions[3]';
   assert.throws(() => edit.change(next, catalog, pointer, { kind: 'numericField', value: 'Name' }), /numeric/);
   assert.throws(() => edit.change(next, catalog, pointer, { kind: 'numericField', value: 'Hours' }), /numeric/);
-  assert.throws(() => edit.change(next, catalog, pointer, { kind: 'numericOperator', value: 'divide' }), /Unknown/);
+  assert.throws(() => edit.change(next, catalog, pointer, { kind: 'numericOperator', value: 'modulo' }), /Unknown/);
   assert.throws(() => edit.change(next, catalog, pointer, { kind: 'numericThreshold', value: NaN }), /numeric/);
   assert.throws(() => edit.change(next, catalog, pointer, { kind: 'numericThreshold', value: 0.1234567 }), /numeric/);
 });

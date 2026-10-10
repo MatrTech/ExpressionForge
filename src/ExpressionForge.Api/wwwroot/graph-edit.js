@@ -139,7 +139,8 @@
     } else if (node.type === 'arithmeticComparison') {
       const left = node.left;
       if (left?.type !== 'numericBinary' || left.left?.type !== 'numericField' ||
-        left.right?.type !== 'numericLiteral' || node.right?.type !== 'numericLiteral')
+        !['numericLiteral', 'numericParameter'].includes(left.right?.type) ||
+        !['numericLiteral', 'numericParameter'].includes(node.right?.type))
         throw Error('Complex arithmetic trees are editable through the JSON AST.');
       const numeric = ['integer', 'decimal'];
       const validNumber = value => typeof value === 'number' && Number.isFinite(value) &&
@@ -149,16 +150,34 @@
           throw Error('Arithmetic field must be numeric and visible in the current scope.');
         left.left.field = patch.value;
       } else if (patch.kind === 'numericOperator') {
-        if (!['add', 'subtract', 'multiply'].includes(patch.value)) throw Error('Unknown arithmetic operation.');
+        if (!['add', 'subtract', 'multiply', 'divide'].includes(patch.value)) throw Error('Unknown arithmetic operation.');
         left.operator = patch.value;
       } else if (patch.kind === 'numericComparator') {
         if (!['equals', 'notEquals', 'greaterThan', 'greaterThanOrEqual', 'lessThan', 'lessThanOrEqual']
           .includes(patch.value)) throw Error('Unsupported numeric comparison.');
         node.operator = patch.value;
+      } else if (patch.kind === 'numericOperandMode' || patch.kind === 'numericThresholdMode') {
+        if (!['literal', 'parameter'].includes(patch.value)) throw Error('Unknown numeric value source.');
+        const target = patch.kind === 'numericOperandMode' ? left : node;
+        const key = patch.kind === 'numericOperandMode' ? 'right' : 'right';
+        if (patch.value === 'literal') target[key] = { type: 'numericLiteral', value: 0 };
+        else {
+          let number = 1;
+          const occupied = JSON.stringify(next);
+          while (occupied.includes('"parameter":"numeric' + number + '"')) number++;
+          target[key] = { type: 'numericParameter', parameter: 'numeric' + number };
+        }
       } else if (patch.kind === 'numericOperand' || patch.kind === 'numericThreshold') {
         if (!validNumber(patch.value)) throw Error('Expected a numeric literal within ±1e12 and at most 6 decimals.');
-        if (patch.kind === 'numericOperand') left.right.value = patch.value;
-        else node.right.value = patch.value;
+        const target = patch.kind === 'numericOperand' ? left.right : node.right;
+        if (target.type !== 'numericLiteral') throw Error('Switch back to fixed value before editing a number.');
+        target.value = patch.value;
+      } else if (patch.kind === 'numericOperandParameter' || patch.kind === 'numericThresholdParameter') {
+        if (typeof patch.value !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(patch.value))
+          throw Error('Use 1–64 letters, digits, _ or - for a numeric parameter.');
+        const target = patch.kind === 'numericOperandParameter' ? left.right : node.right;
+        if (target.type !== 'numericParameter') throw Error('Switch to runtime parameter first.');
+        target.parameter = patch.value;
       } else throw Error('Unsupported arithmetic change.');
     } else if (node.type === 'fieldComparison') {
       if (!['leftField', 'rightField', 'operator'].includes(patch.kind))

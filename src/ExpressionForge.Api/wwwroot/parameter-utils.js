@@ -9,6 +9,28 @@ globalThis.ExpressionForgeParameters = (() => {
     const result = new Map();
     const entities = new Map(catalog.entities.map(item => [item.id, item]));
 
+    function visitNumeric(value, entityId) {
+      if (!value || typeof value !== 'object') return;
+      if (value.type === 'numericBinary') {
+        visitNumeric(value.left, entityId);
+        visitNumeric(value.right, entityId);
+        return;
+      }
+      if (value.type !== 'numericParameter' || typeof value.parameter !== 'string') return;
+      const previous = result.get(value.parameter);
+      if (previous) {
+        if (previous.dataType !== 'decimal') previous.conflict = true;
+        previous.numeric = true;
+        previous.references.push(entityId + '.numeric');
+      } else {
+        result.set(value.parameter, {
+          name: value.parameter, dataType: 'decimal', numeric: true,
+          references: [entityId + '.numeric'], conflict: false,
+          validName: validName.test(value.parameter)
+        });
+      }
+    }
+
     function visit(expression, entityId) {
       if (!expression || typeof expression !== 'object') return;
       const metadata = entities.get(entityId);
@@ -20,6 +42,9 @@ globalThis.ExpressionForgeParameters = (() => {
       } else if (expression.type === 'collectionExpression') {
         const relation = metadata.relationships?.find(item => item.id === expression.collection);
         if (relation) visit(expression.expression, relation.targetEntity);
+      } else if (expression.type === 'arithmeticComparison') {
+        visitNumeric(expression.left, entityId);
+        visitNumeric(expression.right, entityId);
       } else if (expression.type === 'expression' && typeof expression.parameter === 'string') {
         const field = metadata.properties?.find(item => item.id === expression.field);
         if (!field || ['isNull', 'isNotNull'].includes(expression.operator)) return;
@@ -65,6 +90,8 @@ globalThis.ExpressionForgeParameters = (() => {
         if (!/^-?(0|[1-9][0-9]*)(\.[0-9]+)?$/.test(raw)) throw new Error(`Parameter "${item.name}" must be a decimal number.`);
         const value = Number(raw);
         if (!Number.isFinite(value)) throw new Error(`Parameter "${item.name}" is out of range.`);
+        if (item.numeric && (Math.abs(value) > 1e12 || !/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]{1,6})?$/.test(raw)))
+          throw new Error(`Numeric parameter "${item.name}" must be within ±1e12 and have at most six decimal places.`);
         parameters[item.name] = value;
       } else {
         throw new Error(`Unsupported parameter type "${item.dataType}".`);
