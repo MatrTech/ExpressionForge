@@ -36,6 +36,11 @@ The site uses project-relative asset paths so it works under the `/ExpressionFor
 - `site/index.html`: accessible landing page, documentation and playground controls.
 - `site/styles.css`: responsive design; no external CSS framework or CDN dependency.
 - `site/app.js`: standalone, browser-only AST demonstration.
+- `site/examples.json`: five portable, versioned query scenarios with parameter defaults, used by the website and .NET tests.
+- `site/example-gallery.js`: expression-tree visualization, typed runtime input controls, and separate definition/bound request views.
+- `tests/ExpressionForge.Site.Tests/example-gallery.test.cjs`: tests for nested AST traversal, parameter reuse and JSON separation.
+- `tests/ExpressionForge.Tests/ShowcaseExamplesTests.cs`: validates and compiles every published example with the real .NET engine.
+- `tests/ExpressionForge.IntegrationTests/SqlServerSemanticsTests.cs`: verifies each example returns expected rows on SQL Server 2022.
 - `site/favicon.svg`: small project icon.
 - `tests/ExpressionForge.Site.Tests/site.test.cjs`: tests for AST shape, SQL illustration and relative assets.
 
