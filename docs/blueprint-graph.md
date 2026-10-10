@@ -50,9 +50,23 @@ Run `node --test tests/ExpressionForge.Editor.Tests/*.test.cjs` and the regular 
 
 This change belongs to **v0.4.0 development**. The visible product/package version remains unchanged until the complete release milestones pass.
 
+## Increment 2 — Free-form Blueprint canvas
+
+The Blueprint mode now provides a **freely arrangeable, read-only query graph**. Guided mode remains the default for editing query semantics. The graph shows curved predicate connections and offers:
+
+- Drag any node to move it; drag empty space to pan.
+- Scroll/pinch-compatible wheel gestures and explicit +/- buttons to zoom around the pointer or canvas center.
+- **Fit** to center every node, or **Reset layout** to restore deterministic positions.
+- Arrow keys move a focused node 10 world pixels; Shift + Arrow keys move it 40 pixels.
+- Breadcrumbs open AND/OR and collection subgraphs, with an independent viewport and node layout for each.
+- Layout is stored locally per **catalog and root entity** in browser localStorage with a versioned key. Missing or unavailable storage degrades to session-only state.
+
+**Contract boundary:** node positions and camera state are never added to AST v1, to runtime parameters, or to API requests. Moving nodes only changes presentation. No socket editing, drag-to-connect, semantic undo/redo, or shared cross-device layout yet. Query execution and validation still use the backend AST.
+
+This increment intentionally doesn't change query semantics, the .NET packages, or the current released version.
+
 ## Next increments
 
-1. Replace the preview layout with a pan/zoom free-form canvas and persisted editor-only positions.
-2. Add actual interactive socket connections, insertion, undo/redo and typed metadata palette.
-3. Extend UI tests for keyboard, pointer, navigation and invalid intermediate states.
-4. Publish interactive, CI-verified Blueprint examples on GitHub Pages.
+1. Add interactive socket connections, insertion, undo/redo and the typed metadata palette.
+2. Extend browser-level interaction tests for pointer and keyboard navigation.
+3. Publish CI-verified complex Blueprint examples on GitHub Pages.

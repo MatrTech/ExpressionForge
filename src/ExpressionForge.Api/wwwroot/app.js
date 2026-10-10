@@ -2,7 +2,8 @@
 
 const $ = id => document.getElementById(id);
 const state = { catalog: null, catalogs: [], definition: null, parameters: {}, drafts: new Map(),
-  graphPreview: false, activeGraphKey: 'root', graphSubgraphs: new Set() };
+  graphPreview: false, activeGraphKey: 'root', graphSubgraphs: new Set(),
+  graphLayout: null, layoutKey: null };
 const sample = {
   version: 1,
   entity: 'Customer',
@@ -269,6 +270,16 @@ function renderSchema() {
     container.append(row);
   }
 }
+function browserStorage() {
+  try { return window.localStorage; } catch { return null; }
+}
+function useCanvasLayout(catalogId, entityId) {
+  state.layoutKey = ExpressionForgeGraphLayout.storageKey(catalogId, entityId);
+  state.graphLayout = ExpressionForgeGraphLayout.read(browserStorage(), state.layoutKey);
+}
+function saveCanvasLayout() {
+  ExpressionForgeGraphLayout.write(browserStorage(), state.layoutKey, state.graphLayout);
+}
 function renderGraphPreview() {
   const host = $('graph-preview');
   try {
@@ -279,7 +290,7 @@ function renderGraphPreview() {
         state.graphSubgraphs.add(node.astId || node.path);
       state.activeGraphKey = graphKey;
       renderGraphPreview();
-    });
+    }, { layoutState: state.graphLayout, onLayoutChange: saveCanvasLayout });
   } catch (error) {
     host.textContent = 'Blueprint preview unavailable: ' + error.message;
   }
@@ -353,6 +364,7 @@ async function activateCatalog(catalogId, imported = null) {
     state.drafts.set(state.catalog.catalogId, { definition: structuredClone(state.definition), parameters: { ...state.parameters } });
   state.catalog = metadata;
   state.definition = definition;
+  useCanvasLayout(catalogId, definition.entity);
   state.activeGraphKey = 'root';
   state.graphSubgraphs.clear();
   state.parameters = imported ? {} : { ...(draft?.parameters ?? {}) };
@@ -362,6 +374,7 @@ async function activateCatalog(catalogId, imported = null) {
   $('entity').replaceWith(Object.assign(select(options, definition.entity, value => {
     state.definition.entity = value;
     state.definition.query = group(value);
+    useCanvasLayout(state.catalog.catalogId, value);
     state.activeGraphKey = 'root';
     state.graphSubgraphs.clear();
     render(); show('');
@@ -377,6 +390,8 @@ async function start() {
   $('reset').addEventListener('click', () => {
     state.definition = ExpressionForgeCatalogs.makeDefinition(state.catalog, sample);
     state.parameters = {};
+    state.graphLayout = ExpressionForgeGraphLayout.empty();
+    saveCanvasLayout();
     state.activeGraphKey = 'root';
     state.graphSubgraphs.clear();
     render(); show('');

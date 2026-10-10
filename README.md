@@ -115,9 +115,9 @@ Frontend metadata is presentation information, not an authorization boundary. Th
 
 ## Blueprint preview (v0.4.0 development)
 
-The editor now offers an **optional, read-only Blueprint preview** alongside the existing guided editor. It projects the same AST into typed predicate nodes, preserves collection scopes, and lets you inspect nested AND/OR and collection subgraphs using breadcrumbs. Guided editing remains the default. The SQL compiler, JSON contract, and backend validation are unchanged.
+The editor offers an optional **free-form Blueprint canvas** alongside the guided editor. It projects the AST into typed predicate nodes, shows connections, supports dragging, panning, zooming, fit/reset layout and nested subgraph navigation. Guided editing remains the default; Blueprint is currently an interactive **layout and navigation view**, not yet a semantic graph editor. Node positions are kept separately in local browser storage per catalog/entity and never change the JSON AST.
 
-This first increment is **not yet a free-form editable canvas**; pan/zoom, live socket rewiring and undo/redo remain planned. See the [graph projection design and acceptance boundaries](docs/blueprint-graph.md).
+Interactive socket rewiring, node creation, and undo/redo remain planned. The SQL compiler, JSON contract and backend validation are unchanged. See the [graph projection design and acceptance boundaries](docs/blueprint-graph.md).
 
 ## Next milestones
 
