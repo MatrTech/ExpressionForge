@@ -1,7 +1,8 @@
 'use strict';
 
 const $ = id => document.getElementById(id);
-const state = { catalog: null, catalogs: [], definition: null, parameters: {}, drafts: new Map() };
+const state = { catalog: null, catalogs: [], definition: null, parameters: {}, drafts: new Map(),
+  graphPreview: false, activeGraphKey: 'root', graphSubgraphs: new Set() };
 const sample = {
   version: 1,
   entity: 'Customer',
@@ -208,6 +209,7 @@ function updateJson() {
   $('json').value = JSON.stringify(state.definition, null, 2);
   $('node-count').textContent = `${countNodes(state.definition.query)} nodes`;
   renderParameters();
+  if (state.graphPreview) renderGraphPreview();
 }
 function renderParameters() {
   const definitions = ExpressionForgeParameters.discover(state.definition, state.catalog);
@@ -266,6 +268,31 @@ function renderSchema() {
     row.append(element('span', '', `◇ ${relation.displayName}`), element('span', 'schema-type', `→ ${relation.targetEntity}[]`));
     container.append(row);
   }
+}
+function renderGraphPreview() {
+  const host = $('graph-preview');
+  try {
+    const projection = ExpressionForgeGraph.project(state.definition, state.catalog,
+      { subgraphNodeIds: Array.from(state.graphSubgraphs) });
+    state.activeGraphKey = ExpressionForgeGraphPreview.render(host, projection, state.activeGraphKey, (graphKey, node) => {
+      if (node?.kind === 'group' && !node.childGraphKey)
+        state.graphSubgraphs.add(node.astId || node.path);
+      state.activeGraphKey = graphKey;
+      renderGraphPreview();
+    });
+  } catch (error) {
+    host.textContent = 'Blueprint preview unavailable: ' + error.message;
+  }
+}
+function setEditorMode(blueprint) {
+  state.graphPreview = blueprint;
+  $('graph').hidden = blueprint;
+  $('graph-preview').hidden = !blueprint;
+  $('guided-mode').className = blueprint ? 'button ghost' : 'button secondary';
+  $('blueprint-mode').className = blueprint ? 'button secondary' : 'button ghost';
+  $('guided-mode').setAttribute('aria-pressed', String(!blueprint));
+  $('blueprint-mode').setAttribute('aria-pressed', String(blueprint));
+  if (blueprint) renderGraphPreview();
 }
 function render() {
   const root = $('graph');
@@ -326,6 +353,8 @@ async function activateCatalog(catalogId, imported = null) {
     state.drafts.set(state.catalog.catalogId, { definition: structuredClone(state.definition), parameters: { ...state.parameters } });
   state.catalog = metadata;
   state.definition = definition;
+  state.activeGraphKey = 'root';
+  state.graphSubgraphs.clear();
   state.parameters = imported ? {} : { ...(draft?.parameters ?? {}) };
   $('catalog').value = catalogId;
 
@@ -333,6 +362,8 @@ async function activateCatalog(catalogId, imported = null) {
   $('entity').replaceWith(Object.assign(select(options, definition.entity, value => {
     state.definition.entity = value;
     state.definition.query = group(value);
+    state.activeGraphKey = 'root';
+    state.graphSubgraphs.clear();
     render(); show('');
   }), { id: 'entity' }));
   $('connection').textContent = `Catalog ${catalogId} · ${metadata.catalogVersion}`;
@@ -340,8 +371,16 @@ async function activateCatalog(catalogId, imported = null) {
 }
 
 async function start() {
+  $('guided-mode').addEventListener('click', () => setEditorMode(false));
+  $('blueprint-mode').addEventListener('click', () => setEditorMode(true));
   for (const endpoint of ['validate', 'compile', 'preview']) $(endpoint).addEventListener('click', () => perform(endpoint));
-  $('reset').addEventListener('click', () => { state.definition = ExpressionForgeCatalogs.makeDefinition(state.catalog, sample); state.parameters = {}; render(); show(''); });
+  $('reset').addEventListener('click', () => {
+    state.definition = ExpressionForgeCatalogs.makeDefinition(state.catalog, sample);
+    state.parameters = {};
+    state.activeGraphKey = 'root';
+    state.graphSubgraphs.clear();
+    render(); show('');
+  });
   $('load-json').addEventListener('click', async () => {
     try {
       const value = JSON.parse($('json').value);

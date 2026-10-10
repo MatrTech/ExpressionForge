@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="/styles.css">
   <script src="/parameter-utils.js" defer></script>
   <script src="/catalog-utils.js" defer></script>
+  <script src="/graph-model.js" defer></script>
+  <script src="/graph-preview.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
 <body>
@@ -33,7 +35,12 @@
         <div><div class="eyebrow">EXPRESSION GRAPH</div><h1>Query canvas</h1><p>Build nested conditions by connecting expression blocks.</p></div>
         <button id="reset" class="button ghost">↺ Reset</button>
       </div>
+      <div class="editor-modes" role="group" aria-label="Query editor mode">
+        <button id="guided-mode" class="button secondary" aria-pressed="true">Guided editor</button>
+        <button id="blueprint-mode" class="button ghost" aria-pressed="false">Blueprint preview ↗</button>
+      </div>
       <div id="graph" class="graph"></div>
+      <div id="graph-preview" class="blueprint-preview" hidden></div>
       <div class="workspace-footer"><span class="socket"></span> Predicate output <span class="divider-dot">•</span> All expressions compile into a single parameterized query.</div>
     </section>
     <aside class="inspector">
