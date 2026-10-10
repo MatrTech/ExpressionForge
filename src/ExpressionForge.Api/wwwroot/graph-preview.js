@@ -162,12 +162,13 @@
       card.setAttribute('aria-label', description(node) + '. Drag to reposition; use arrow keys to move.');
       const head = el('div', 'blueprint-card-title');
       if (node.input) {
-        if (node.kind === 'group') {
+        if (node.kind === 'group' || (node.kind === 'sink' && graph.kind === 'logicalGroup')) {
+          const targetPath = node.kind === 'sink' ? graphOwner.path : node.path;
           const input = button('●', 'Attach selected predicate to ' + description(node), () => {
-            if (options.pendingSourcePath) options.onReconnect?.(options.pendingSourcePath, node.path);
+            if (options.pendingSourcePath) options.onReconnect?.(options.pendingSourcePath, targetPath);
           }, 'blueprint-socket-input');
           input.setAttribute('aria-label', 'Connect to ' + description(node));
-          input.dataset.targetPath = node.path;
+          input.dataset.targetPath = targetPath;
           input.dataset.entityId = node.entityId;
           input.disabled = Boolean(options.pendingSourcePath) &&
             options.pendingSourceEntity !== node.entityId;
@@ -369,7 +370,21 @@
     }, { passive: false });
 
     let gesture = null;
+    let hoveredSocket = null;
+    const socketAt = (x, y) => document.elementFromPoint(x, y)?.closest('.blueprint-socket-input');
     viewport.addEventListener('pointerdown', event => {
+      const output = event.target.closest('.blueprint-socket-output');
+      if (event.button === 0 && output && !output.disabled) {
+        gesture = {
+          type: 'wire', pointerId: event.pointerId, x: event.clientX, y: event.clientY,
+          key: output.dataset.nodeKey, sourcePath: output.dataset.sourcePath,
+          entityId: output.dataset.entityId, changed: false
+        };
+        viewport.setPointerCapture(event.pointerId);
+        viewport.classList.add('blueprint-dragging-wire');
+        event.preventDefault();
+        return;
+      }
       if ((event.button !== 0 && event.button !== 1) ||
         event.target.closest('button, select, input, textarea, label')) return;
       const card = event.target.closest('.blueprint-card');
@@ -390,6 +405,28 @@
       const dy = event.clientY - gesture.y;
       if (!dx && !dy) return;
       gesture.changed = true;
+      if (gesture.type === 'wire') {
+        hoveredSocket?.classList.remove('blueprint-drop-valid', 'blueprint-drop-invalid');
+        hoveredSocket = socketAt(event.clientX, event.clientY);
+        if (hoveredSocket) {
+          const status = options.onCheckReconnect?.(gesture.sourcePath, hoveredSocket.dataset.targetPath);
+          hoveredSocket.classList.add(status?.valid ? 'blueprint-drop-valid' : 'blueprint-drop-invalid');
+        }
+        const source = layout.positions[gesture.key];
+        const bounds = viewport.getBoundingClientRect();
+        const endX = (event.clientX - bounds.left - layout.viewport.x) / layout.viewport.zoom;
+        const endY = (event.clientY - bounds.top - layout.viewport.y) / layout.viewport.zoom;
+        const startX = source.x + dimensions.width, startY = source.y + dimensions.height / 2;
+        if (!gesture.line) {
+          gesture.line = document.createElementNS(svgNamespace, 'path');
+          gesture.line.setAttribute('class', 'blueprint-wire blueprint-wire-pending');
+          wires.append(gesture.line);
+        }
+        gesture.line.setAttribute('d', 'M ' + startX + ' ' + startY +
+          ' C ' + (startX + 80) + ' ' + startY + ' ' + (endX - 80) + ' ' + endY +
+          ' ' + endX + ' ' + endY);
+        return;
+      }
       if (gesture.type === 'node') {
         layout.positions[gesture.key] = {
           x: Math.max(-100000, Math.min(100000, gesture.from.x + dx / layout.viewport.zoom)),
@@ -400,17 +437,33 @@
       }
       draw();
     });
-    function endGesture(event) {
+    function endGesture(event, cancelled = false) {
       if (!gesture || event.pointerId !== gesture.pointerId) return;
-      const changed = gesture.changed;
+      const finished = gesture;
       gesture = null;
-      viewport.classList.remove('blueprint-dragging');
+      viewport.classList.remove('blueprint-dragging', 'blueprint-dragging-wire');
+      hoveredSocket?.classList.remove('blueprint-drop-valid', 'blueprint-drop-invalid');
+      hoveredSocket = null;
+      finished.line?.remove();
       if (viewport.hasPointerCapture(event.pointerId)) viewport.releasePointerCapture(event.pointerId);
-      if (changed) commit();
+      if (cancelled) return;
+      if (finished.type === 'wire') {
+        if (!finished.changed) {
+          options.onSource?.(finished.sourcePath, finished.entityId);
+          return;
+        }
+        const target = socketAt(event.clientX, event.clientY);
+        if (!target) return;
+        const status = options.onCheckReconnect?.(finished.sourcePath, target.dataset.targetPath);
+        if (status?.valid) options.onReconnect?.(finished.sourcePath, target.dataset.targetPath);
+        else if (status?.reason) hint.textContent = status.reason;
+        return;
+      }
+      if (finished.changed) commit();
     }
-    viewport.addEventListener('pointerup', endGesture);
-    viewport.addEventListener('pointercancel', endGesture);
-    viewport.addEventListener('lostpointercapture', endGesture);
+    viewport.addEventListener('pointerup', event => endGesture(event));
+    viewport.addEventListener('pointercancel', event => endGesture(event, true));
+    viewport.addEventListener('lostpointercapture', event => endGesture(event, true));
 
     for (const [key, card] of cards) card.addEventListener('keydown', event => {
       if (event.target !== card || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;
