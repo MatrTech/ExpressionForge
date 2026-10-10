@@ -95,6 +95,14 @@ curl -s -X POST 'http://localhost:5054/api/query/compile?limit=10' \
 
 The core package has **no external NuGet dependencies**.
 
+## Custom metadata catalogs (v0.3.0 development)
+
+The first v0.3.0 increment supports registering a trusted, server-side entity catalog instead of the built-in Customer/Order demo. Define typed properties, supported operators, SQL Server table mappings and typed relationships in a local JSON file; the API validates these before accepting queries. The visual editor discovers the resulting entities through the existing metadata endpoint.
+
+Try the [Project/Task catalog](examples/project-catalog.json) and its [nested parameterized query](examples/project-query.json), or see the [metadata registration guide](docs/metadata-registration.md). The public [metadata showcase](https://matrtech.github.io/ExpressionForge/#metadata) illustrates the example.
+
+Set `ExpressionForge__CatalogFile` to the absolute path of your trusted JSON catalog file before starting the API. SQL tables must exist in the configured database. Custom operator implementations, hot reload, permissions and database introspection are not part of this first increment.
+
 ## Safety and current constraints
 
 The metadata registry explicitly lists allowed entities and fields; SQL table/relationship mappings stay server-side. Queries use only catalog-controlled identifiers and bind all scalar values as typed parameters. Root queries are explicitly projected to catalog fields, with `TOP (@take)` bounded to 100 results. Execution is read-only by convention and must use **least-privilege SQL credentials**—the engine does not grant or enforce database account permissions.
