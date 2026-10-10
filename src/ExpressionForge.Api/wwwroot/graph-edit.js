@@ -70,6 +70,12 @@
       return { type: 'expression', field: meta.id, operator,
         ...(nullCheck(operator) ? {} : { value: defaultValue(meta.dataType) }) };
     }
+    if (spec.kind === 'tryParseDecimal') {
+      const textField = entity(catalog, entityId).properties?.find(p => p.dataType === 'string');
+      if (!textField) throw Error('No string field is available in this scope.');
+      return { type: 'arithmeticComparison', left: { type: 'tryParseDecimal', field: textField.id },
+        operator: 'greaterThan', right: { type: 'numericLiteral', value: 0 } };
+    }
     if (spec.kind === 'stringLength') {
       const textField = entity(catalog, entityId).properties?.find(p => p.dataType === 'string');
       if (!textField) throw Error('No string fields are available in this scope.');
@@ -123,6 +129,8 @@
       ...(fieldPair(catalog, entityId) ? [{ kind: 'fieldComparison', label: 'Compare two fields' }] : []),
       ...((meta.properties || []).some(p => p.dataType === 'string') ?
         [{ kind: 'stringLength', label: 'Text length' }] : []),
+      ...((meta.properties || []).some(p => p.dataType === 'string') ?
+        [{ kind: 'tryParseDecimal', label: 'Parse decimal from text' }] : []),
       ...((meta.properties || []).some(p => ['date', 'dateTime'].includes(p.dataType) &&
         meta.properties.filter(x => x.dataType === p.dataType).length >= 2) ?
         [{ kind: 'dateDiffDays', label: 'Days between dates' }] : []),
@@ -158,7 +166,7 @@
       node.quantifier = patch.value;
     } else if (node.type === 'arithmeticComparison') {
       const left = node.left;
-      if (['stringLength', 'dateDiffDays'].includes(left?.type)) {
+      if (['stringLength', 'dateDiffDays', 'tryParseDecimal'].includes(left?.type)) {
         const props = entity(catalog, entityId)?.properties || [];
         const get = name => props.find(p => p.id === name);
         if (patch.kind === 'numericComparator') {
@@ -171,7 +179,7 @@
             Math.round(patch.value * 1e6) / 1e6 !== patch.value)
             throw Error('Expected a numeric threshold with at most six decimals.');
           node.right.value = patch.value;
-        } else if (patch.kind === 'stringField' && left.type === 'stringLength') {
+        } else if (patch.kind === 'stringField' && ['stringLength', 'tryParseDecimal'].includes(left.type)) {
           if (get(patch.value)?.dataType !== 'string') throw Error('String field is not available in this scope.');
           left.field = patch.value;
         } else if (['startDateField','endDateField'].includes(patch.kind) && left.type === 'dateDiffDays') {
