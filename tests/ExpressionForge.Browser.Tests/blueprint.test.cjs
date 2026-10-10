@@ -10,7 +10,7 @@ let browser;
 before(async () => { browser = await chromium.launch({ headless: true }); });
 after(async () => { await browser?.close(); });
 
-async function openShowcase(t, viewport = { width: 1440, height: 900 }) {
+async function openShowcase(t, viewport = { width: 1440, height: 900 }, keepTutorial = false) {
   const page = await browser.newPage({ viewport });
   t.after(() => page.close());
   const failures = [];
@@ -19,6 +19,8 @@ async function openShowcase(t, viewport = { width: 1440, height: 900 }) {
   assert.equal(response.status(), 200);
   await page.locator('#blueprint-mode[aria-pressed="true"]').waitFor({ timeout: 15000 });
   await page.locator('.blueprint-card').first().waitFor();
+  await page.locator('.ef-tour-panel').waitFor();
+  if (!keepTutorial) await page.locator('.ef-tour-dismiss').click();
   assert.deepEqual(failures, []);
   return page;
 }
@@ -124,7 +126,58 @@ test('.NET API editor boots with registered catalogs and really compiles a SQL q
   assert.equal(response.status(), 200);
   await page.waitForFunction(() => document.getElementById('connection').textContent.startsWith('Catalog '),
     { timeout: 15000 });
+  await page.locator('.ef-tour-panel').waitFor();
+  await page.locator('.ef-tour-dismiss').click();
   await page.locator('#compile').click();
   await page.waitForFunction(() => document.getElementById('output').textContent.includes('SELECT'));
   assert.match(await page.locator('#output').textContent(), /FROM/);
+});
+
+
+test('first visit offers a gentle tour and next/back guide users without editing the AST', async t => {
+  const page = await openShowcase(t, { width: 1440, height: 900 }, true);
+  const before = await definition(page);
+  const dialog = page.getByRole('dialog', { name: 'Welcome to ExpressionForge' });
+  assert.ok(await dialog.isVisible());
+  assert.equal(await page.locator('.ef-tour-panel').getAttribute('data-step'), '0');
+  await page.getByRole('button', { name: /Start tour/ }).last().click();
+  assert.equal(await page.locator('.ef-tour-panel').getAttribute('data-step'), '1');
+  assert.equal(await page.locator('#guided-mode').getAttribute('aria-pressed'), 'true');
+  await page.locator('.ef-tour-next').click();
+  assert.equal(await page.locator('#blueprint-mode').getAttribute('aria-pressed'), 'true');
+  await page.locator('.ef-tour-back').click();
+  assert.equal(await page.locator('#guided-mode').getAttribute('aria-pressed'), 'true');
+  await page.locator('.ef-tour-next').click();
+  for (let step = 3; step <= 5; step++) {
+    await page.locator('.ef-tour-next').click();
+    assert.equal(await page.locator('.ef-tour-panel').getAttribute('data-step'), String(step));
+  }
+  await page.locator('.ef-tour-next').click();
+  assert.equal(await page.locator('.ef-tour-panel').count(), 0);
+  assert.deepEqual(await definition(page), before);
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.locator('#blueprint-mode[aria-pressed="true"]').waitFor();
+  await page.locator('.blueprint-card').first().waitFor();
+  assert.equal(await page.locator('.ef-tour-panel').count(), 0);
+  await page.locator('#start-tour').click();
+  assert.equal(await page.locator('.ef-tour-panel').getAttribute('data-step'), '0');
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('.ef-tour-panel').count(), 0);
+});
+
+test('skip persists and tutorial can be reopened from Help on mobile', async t => {
+  const page = await openShowcase(t, { width: 390, height: 844 }, true);
+  await page.locator('.ef-tour-dismiss').click();
+  assert.equal(await page.locator('.ef-tour-panel').count(), 0);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.locator('.blueprint-card').first().waitFor();
+  assert.equal(await page.locator('.ef-tour-panel').count(), 0);
+  await page.getByRole('button', { name: 'Start ExpressionForge tutorial' }).click();
+  await page.locator('.ef-tour-next').click();
+  assert.equal(await page.locator('.ef-tour-panel').getAttribute('data-step'), '1');
+  const bounds = await page.locator('.ef-tour-panel').boundingBox();
+  assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 390);
+  assert.ok(bounds.y + bounds.height <= 844);
+  await page.locator('.ef-tour-dismiss').click();
 });

@@ -40,6 +40,7 @@ jobs:
           node --check src/ExpressionForge.Api/wwwroot/graph-edit.js
           node --check src/ExpressionForge.Api/wwwroot/graph-history.js
           node --check src/ExpressionForge.Api/wwwroot/graph-preview.js
+          node --check src/ExpressionForge.Api/wwwroot/onboarding.js
       - name: Test editor parameter bindings
         run: node --test tests/ExpressionForge.Editor.Tests/*.test.cjs
       - name: Prepare live Blueprint showcase

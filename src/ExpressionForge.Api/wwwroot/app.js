@@ -482,6 +482,7 @@ async function activateCatalog(catalogId, imported = null) {
 }
 
 async function start() {
+  $('start-tour').addEventListener('click', () => ExpressionForgeTour.start());
   $('undo-edit').addEventListener('click', () => restoreHistory('undo'));
   $('redo-edit').addEventListener('click', () => restoreHistory('redo'));
   window.addEventListener('keydown', event => {
@@ -542,6 +543,7 @@ async function start() {
         catch (error) { $('catalog').value = state.catalog.catalogId; show(error.message, 'error'); }
       }), { id: 'catalog' }));
     await activateCatalog(initialId);
+    ExpressionForgeTour.maybeStart();
   } catch (error) { show(error.message, 'error'); $('connection').textContent = 'Metadata unavailable'; }
 }
 start();

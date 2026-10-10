@@ -11,7 +11,7 @@ const source = path.join(root, 'src/ExpressionForge.Api/wwwroot');
 
 test('published Blueprint is the real editor, not a visual-only reimplementation', () => {
   const files = ['app.js', 'catalog-utils.js', 'parameter-utils.js', 'graph-model.js', 'graph-layout.js',
-    'graph-edit.js', 'graph-history.js', 'graph-preview.js', 'styles.css'];
+    'graph-edit.js', 'graph-history.js', 'graph-preview.js', 'onboarding.js', 'styles.css'];
   for (const file of files) {
     assert.equal(fs.readFileSync(path.join(assets, file), 'utf8'),
       fs.readFileSync(path.join(source, file), 'utf8'), 'showcase asset drift: ' + file);
@@ -40,6 +40,8 @@ test('Pages navigation links to the live editor and backend-only actions are vis
   assert.match(demo, /No SQL execution/);
   assert.match(demo, /blueprint-assets\/app\.js/);
   assert.match(demo, /blueprint-demo\.js/);
+  assert.match(demo, /blueprint-assets\/onboarding\.js/);
+  assert.match(demo, /id="start-tour"/);
 });
 
 test('Pages and CI pipelines explicitly prepare shared Blueprint files before checking the demo', () => {

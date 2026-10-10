@@ -13,10 +13,11 @@
   <script src="blueprint-assets/graph-edit.js" defer></script>
   <script src="blueprint-assets/graph-history.js" defer></script>
   <script src="blueprint-assets/graph-preview.js" defer></script>
+  <script src="blueprint-assets/onboarding.js" defer></script>
   <script src="blueprint-demo.js" defer></script>
   <script src="blueprint-assets/app.js" defer></script>
 </head>
-<body>
+<body data-tour-defer>
   <div class="blueprint-demo-banner"><strong>Live Blueprint Playground</strong><span>Real editor • Browser-only demonstration • No SQL execution</span><a href="index.html">← Back to website</a></div>
   <header class="topbar">
     <div class="brand"><span class="brand-icon">◇</span><span>Expression<span class="accent">Forge</span></span><span class="version">v0.4.0 preview</span></div>
@@ -46,6 +47,7 @@
         <button id="blueprint-mode" class="button ghost" aria-pressed="false">Blueprint canvas ↗</button>
         <button id="undo-edit" class="button ghost" aria-label="Undo query or canvas change" disabled>↶ Undo</button>
         <button id="redo-edit" class="button ghost" aria-label="Redo query or canvas change" disabled>↷ Redo</button>
+        <button id="start-tour" class="button ghost" type="button" aria-label="Start ExpressionForge tutorial">? Tutorial</button>
       </div>
       <div id="graph" class="graph"></div>
       <div id="graph-preview" class="blueprint-preview" hidden></div>

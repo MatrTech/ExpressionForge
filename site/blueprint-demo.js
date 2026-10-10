@@ -55,6 +55,7 @@
       } catch { return false; }
     });
     document.getElementById('blueprint-mode').click();
+    ExpressionForgeTour.releaseDeferredStart();
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
