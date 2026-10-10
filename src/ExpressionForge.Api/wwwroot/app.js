@@ -3,7 +3,8 @@
 const $ = id => document.getElementById(id);
 const state = { catalog: null, catalogs: [], definition: null, parameters: {}, drafts: new Map(),
   graphPreview: false, activeGraphKey: 'root', graphSubgraphs: new Set(),
-  graphLayout: null, layoutKey: null };
+  graphLayout: null, layoutKey: null, expandedNodePath: null,
+  pendingSourcePath: null, pendingSourceEntity: null };
 const sample = {
   version: 1,
   entity: 'Customer',
@@ -81,7 +82,7 @@ function header(node, title, remove) {
   node.append(head);
   return head;
 }
-function createNode(expression, entityId, remove) {
+function createNode(expression, entityId, remove, path = '$.query') {
   const kind = expression.type === 'collectionExpression' ? 'collection' : expression.type === 'expression' ? 'comparison' : expression.type;
   const node = element('div', `node node-${kind}`);
   const titles = { group: 'Logical group', comparison: 'Comparison', collection: 'Collection predicate', not: 'Negation' };
@@ -148,21 +149,26 @@ function createNode(expression, entityId, remove) {
       expression.operator = value; updateJson();
     }), head.lastChild.classList.contains('danger') ? head.lastChild : null);
     const children = element('div', 'children');
-    for (const child of expression.expressions) {
+    for (const [index, child] of expression.expressions.entries()) {
       const wrapper = element('div', 'child');
       wrapper.append(createNode(child, entityId, () => {
         expression.expressions.splice(expression.expressions.indexOf(child), 1); render();
-      }));
+      }, path + '.expressions[' + index + ']'));
       children.append(wrapper);
     }
     if (!expression.expressions.length) children.append(element('div', 'empty', 'Empty group — add an expression.'));
     node.append(children);
     const actions = element('div', 'actions');
-    actions.append(button('+ Expression', () => { expression.expressions.push(comparison(entityId)); render(); }));
-    actions.append(button('+ Group', () => { expression.expressions.push(group(entityId)); render(); }));
-    if (entity(entityId).relationships.length)
-      actions.append(button('+ Collection', () => { expression.expressions.push(collection(entityId)); render(); }));
-    actions.append(button('+ NOT', () => { expression.expressions.push({ type: 'not', expression: comparison(entityId) }); render(); }));
+    const choices = ExpressionForgeGraphEdit.options(state.catalog, entityId);
+    if (choices.length) {
+      const palette = select(choices.map((option, index) =>
+        ({ value: String(index), label: option.label })), '0', () => {});
+      palette.setAttribute('aria-label', 'Choose a condition for ' + entityId);
+      palette.classList.add('guided-condition-picker');
+      actions.append(palette, button('+ Add condition', () =>
+        applyGraphEdit(() => ExpressionForgeGraphEdit.append(state.definition, state.catalog,
+          path, choices[Number(palette.value)]))));
+    }
     node.append(actions);
   } else if (expression.type === 'collectionExpression') {
     const relations = entity(entityId).relationships;
@@ -178,14 +184,14 @@ function createNode(expression, entityId, remove) {
     if (relation) {
       const children = element('div', 'children');
       const wrapper = element('div', 'child');
-      wrapper.append(createNode(expression.expression, relation.targetEntity, null));
+      wrapper.append(createNode(expression.expression, relation.targetEntity, null, path + '.expression'));
       children.append(wrapper);
       node.append(children);
     }
   } else if (expression.type === 'not') {
     const children = element('div', 'children');
     const wrapper = element('div', 'child');
-    wrapper.append(createNode(expression.expression, entityId, null));
+    wrapper.append(createNode(expression.expression, entityId, null, path + '.expression'));
     children.append(wrapper);
     node.append(children);
   }
@@ -280,6 +286,13 @@ function useCanvasLayout(catalogId, entityId) {
 function saveCanvasLayout() {
   ExpressionForgeGraphLayout.write(browserStorage(), state.layoutKey, state.graphLayout);
 }
+function applyGraphEdit(operation) {
+  try {
+    state.definition = operation();
+    render();
+    show('Query updated. Validate before execution.', 'success');
+  } catch (error) { show(error.message, 'error'); }
+}
 function renderGraphPreview() {
   const host = $('graph-preview');
   try {
@@ -290,7 +303,35 @@ function renderGraphPreview() {
         state.graphSubgraphs.add(node.astId || node.path);
       state.activeGraphKey = graphKey;
       renderGraphPreview();
-    }, { layoutState: state.graphLayout, onLayoutChange: saveCanvasLayout });
+    }, {
+      layoutState: state.graphLayout, onLayoutChange: saveCanvasLayout, catalog: state.catalog,
+      expandedPath: state.expandedNodePath, pendingSourcePath: state.pendingSourcePath,
+      pendingSourceEntity: state.pendingSourceEntity,
+      onExpand: path => {
+        state.expandedNodePath = state.expandedNodePath === path ? null : path;
+        renderGraphPreview();
+      },
+      onAdd: (path, spec) => applyGraphEdit(() =>
+        ExpressionForgeGraphEdit.append(state.definition, state.catalog, path, spec)),
+      onChange: (path, patch) => applyGraphEdit(() =>
+        ExpressionForgeGraphEdit.change(state.definition, state.catalog, path, patch)),
+      onSource: (path, entityId) => {
+        state.pendingSourcePath = path;
+        state.pendingSourceEntity = entityId || null;
+        renderGraphPreview();
+      },
+      onReconnect: (source, target) => {
+        try {
+          const next = ExpressionForgeGraphEdit.reconnect(state.definition, state.catalog, source, target);
+          state.pendingSourcePath = null;
+          state.pendingSourceEntity = null;
+          state.expandedNodePath = null;
+          state.definition = next;
+          render();
+          show('Predicate reconnected within its compatible entity scope.', 'success');
+        } catch (error) { show(error.message, 'error'); }
+      }
+    });
   } catch (error) {
     host.textContent = 'Blueprint preview unavailable: ' + error.message;
   }
@@ -364,6 +405,9 @@ async function activateCatalog(catalogId, imported = null) {
     state.drafts.set(state.catalog.catalogId, { definition: structuredClone(state.definition), parameters: { ...state.parameters } });
   state.catalog = metadata;
   state.definition = definition;
+  state.expandedNodePath = null;
+  state.pendingSourcePath = null;
+  state.pendingSourceEntity = null;
   useCanvasLayout(catalogId, definition.entity);
   state.activeGraphKey = 'root';
   state.graphSubgraphs.clear();
@@ -374,6 +418,9 @@ async function activateCatalog(catalogId, imported = null) {
   $('entity').replaceWith(Object.assign(select(options, definition.entity, value => {
     state.definition.entity = value;
     state.definition.query = group(value);
+    state.expandedNodePath = null;
+    state.pendingSourcePath = null;
+    state.pendingSourceEntity = null;
     useCanvasLayout(state.catalog.catalogId, value);
     state.activeGraphKey = 'root';
     state.graphSubgraphs.clear();
@@ -390,6 +437,9 @@ async function start() {
   $('reset').addEventListener('click', () => {
     state.definition = ExpressionForgeCatalogs.makeDefinition(state.catalog, sample);
     state.parameters = {};
+    state.expandedNodePath = null;
+    state.pendingSourcePath = null;
+    state.pendingSourceEntity = null;
     state.graphLayout = ExpressionForgeGraphLayout.empty();
     saveCanvasLayout();
     state.activeGraphKey = 'root';

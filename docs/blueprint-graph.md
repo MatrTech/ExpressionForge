@@ -65,8 +65,21 @@ The Blueprint mode now provides a **freely arrangeable, read-only query graph**.
 
 This increment intentionally doesn't change query semantics, the .NET packages, or the current released version.
 
+## Increment 3 — Guided and Blueprint predicate editing
+
+Both editor modes use one immutable AST command layer (`graph-edit.js`), not a second query format.
+
+- The **Guided editor** offers a metadata-derived *Add condition* selector for logical groups. Newly inserted predicates are connected automatically to the group.
+- The **Blueprint toolbar** adds fields, collections, AND/OR groups and NOT predicates. The active subgraph determines the entity scope; adding into a single predicate wraps it in an AND without discarding the existing expression.
+- The **node chevron** opens a small inline inspector for field/operator/scalar or runtime parameter, AND/OR operator, and collection quantifier.
+- **Typed predicate sockets** allow a user to choose an existing source output and then a compatible AND/OR input to atomically reattach that source. No temporary invalid graph is emitted. A source with no alternative parent cannot be disconnected if that would empty its group. Cycles and cross-entity moves are rejected.
+- New editing commands are applied to immutable clones and reprojected into the existing graph. Backend metadata remains an input to validation and is not an authorization boundary; API validation/compilation remains authoritative.
+- The existing query AST v1, ID semantics, saved runtime bindings, and SQL compiler are unchanged.
+
+This increment does **not** yet offer drawing wires by dragging sockets, arbitrary disconnected intermediate nodes, undo/redo, or a full browser automation suite. These remain deliberate follow-up milestones.
+
 ## Next increments
 
-1. Add interactive socket connections, insertion, undo/redo and the typed metadata palette.
-2. Extend browser-level interaction tests for pointer and keyboard navigation.
-3. Publish CI-verified complex Blueprint examples on GitHub Pages.
+1. Add drag-to-connect, richer insertion/removal, and undo/redo transaction history.
+2. Add browser-level pointer/keyboard and accessibility interaction tests.
+3. Publish CI-verified complex Blueprint demonstrations on GitHub Pages.

@@ -66,6 +66,11 @@
     const helper = $layout();
     const state = options.layoutState || helper.empty();
     const reportChange = options.onLayoutChange || (() => {});
+    const edit = typeof globalThis !== 'undefined' ? globalThis.ExpressionForgeGraphEdit : null;
+    const available = edit?.options(options.catalog, graph.entityId) || [];
+    const graphOwner = graph.ownerNodeKey && graphs.get(graph.parentGraphKey)?.nodes.find(n => n.key === graph.ownerNodeKey);
+    const addPath = graph.kind === 'root' ? '$.query'
+      : graph.kind === 'collection' ? graphOwner?.path + '.expression' : graphOwner?.path;
     host.replaceChildren();
 
     const navigation = el('nav', 'blueprint-breadcrumbs');
@@ -88,7 +93,26 @@
       graph.nodes.filter(node => node.kind !== 'sink').length + ' nodes');
     const actions = el('div', 'blueprint-toolbar-actions');
     const zoomLabel = el('output', 'blueprint-zoom', '100%');
-    bar.append(scope, actions);
+    const palette = el('div', 'blueprint-palette');
+    const chooser = el('select', 'control blueprint-palette-select');
+    chooser.setAttribute('aria-label', 'Choose a field, collection, or logical group');
+    available.forEach((spec, index) => {
+      const option = el('option', '', spec.label);
+      option.value = String(index);
+      chooser.append(option);
+    });
+    const add = button('+ Add condition', 'Create and connect a typed predicate', () => {
+      const spec = available[Number(chooser.value)];
+      if (spec && addPath) options.onAdd?.(addPath, spec);
+    }, 'button small primary');
+    add.disabled = !available.length || !addPath;
+    chooser.disabled = !available.length;
+    palette.append(chooser, add);
+    if (options.pendingSourcePath) {
+      palette.append(button('Cancel connection', 'Cancel pending connection', () => options.onSource?.(null),
+        'button small secondary'));
+    }
+    bar.append(scope, palette, actions);
     host.append(bar);
 
     const viewport = el('div', 'blueprint-viewport');
@@ -106,12 +130,40 @@
       card.dataset.nodeKey = node.key;
       card.setAttribute('aria-label', description(node) + '. Drag to reposition; use arrow keys to move.');
       const head = el('div', 'blueprint-card-title');
-      if (node.input) head.append(el('span', 'blueprint-in-port', '●'));
+      if (node.input) {
+        if (node.kind === 'group') {
+          const input = button('●', 'Attach selected predicate to ' + description(node), () => {
+            if (options.pendingSourcePath) options.onReconnect?.(options.pendingSourcePath, node.path);
+          }, 'blueprint-socket-input');
+          input.setAttribute('aria-label', 'Connect to ' + description(node));
+          input.disabled = !options.pendingSourcePath || options.pendingSourceEntity !== node.entityId;
+          head.append(input);
+        } else head.append(el('span', 'blueprint-in-port', '●'));
+      }
       head.append(el('strong', 'blueprint-label', description(node)));
-      if (node.output) head.append(el('span', 'blueprint-out-port', '●'));
+      if (node.output) {
+        const receiverKey = graph.edges.find(edge => edge.from === node.key)?.to;
+        const receiver = graph.nodes.find(item => item.key === receiverKey);
+        const movable = receiver?.kind === 'group' ||
+          (receiver?.kind === 'sink' && graph.kind === 'logicalGroup');
+        const output = button('●', movable ? 'Select predicate output for reconnection' :
+          'This predicate belongs to a single-input expression', () =>
+          options.onSource?.(node.path, node.entityId), 'blueprint-socket-output');
+        output.disabled = !movable;
+        output.setAttribute('aria-label', 'Select output from ' + description(node));
+        if (options.pendingSourcePath === node.path) output.classList.add('blueprint-socket-selected');
+        head.append(output);
+      }
       card.append(head, el('small', '', node.kind === 'sink' ? 'Destination' :
         node.kind + ' · Predicate<' + node.entityId + '>'));
 
+      if (node.kind !== 'sink') {
+        const expand = button('⌄', 'Edit ' + description(node),
+          () => options.onExpand?.(node.path), 'blueprint-expand');
+        expand.setAttribute('aria-label', 'Edit ' + description(node));
+        expand.setAttribute('aria-expanded', String(options.expandedPath === node.path));
+        card.append(expand);
+      }
       if (node.childGraphKey || node.kind === 'group') {
         const go = button('↗', 'Open ' + description(node) + ' subgraph',
           () => onNavigate(node.childGraphKey || 'subgraph:' + node.key, node), 'blueprint-enter');
@@ -125,8 +177,79 @@
     host.append(viewport);
 
     const hint = el('p', 'blueprint-hint',
-      'Drag nodes to arrange · Drag empty canvas to pan · Scroll or use +/− to zoom · Open ↗ to explore subgraphs. Edit conditions in Guided mode.');
+      'Add a condition from the metadata palette. Use ⌄ to edit, sockets ● to reattach predicates, ↗ for subgraphs.');
     host.append(hint);
+
+    const selected = graph.nodes.find(node => node.path && node.path === options.expandedPath);
+    if (selected && edit && options.catalog) {
+      const inspector = el('section', 'blueprint-inline-inspector');
+      inspector.setAttribute('aria-label', 'Edit selected predicate');
+      inspector.append(el('strong', '', 'Edit · ' + description(selected)));
+      const item = selected.data || {};
+      const meta = options.catalog.entities.find(e => e.id === selected.entityId);
+      function control(label, choices, value, action) {
+        const row = el('label', 'blueprint-inspector-field');
+        row.append(el('span', '', label));
+        const select = el('select', 'control');
+        for (const [id, title] of choices) {
+          const entry = el('option', '', title);
+          entry.value = id;
+          select.append(entry);
+        }
+        select.value = value;
+        select.addEventListener('change', () => action(select.value));
+        row.append(select);
+        inspector.append(row);
+      }
+      const change = (kind, value) => options.onChange?.(selected.path, { kind, value });
+      if (selected.kind === 'group')
+        control('Logic', [['and', 'AND'], ['or', 'OR']], item.operator, value => change('operator', value));
+      if (selected.kind === 'collectionExpression')
+        control('Quantifier', [['any', 'Any'], ['all', 'All'], ['none', 'None']],
+          item.quantifier, value => change('quantifier', value));
+      if (selected.kind === 'expression' && meta) {
+        const property = meta.properties.find(p => p.id === item.field);
+        control('Field', meta.properties.filter(p => p.operators?.length).map(p => [p.id, p.displayName || p.id]),
+          item.field, value => change('field', value));
+        if (property) {
+          control('Operator', property.operators.map(id =>
+            [id, options.catalog.operators?.find(op => op.id === id)?.displayName || id]),
+          item.operator, value => change('operator', value));
+          if (!['isNull', 'isNotNull'].includes(item.operator)) {
+            control('Value source', [['literal', 'Fixed value'], ['parameter', 'Runtime parameter']],
+              item.parameter === undefined ? 'literal' : 'parameter',
+              value => change(value === 'literal' ? 'literal' : 'parameter',
+                value === 'parameter' ? 'parameter_' + Math.random().toString(36).slice(2, 9) : null));
+            const row = el('label', 'blueprint-inspector-field');
+            row.append(el('span', '', item.parameter === undefined ? 'Value' : 'Parameter name'));
+            const value = item.parameter === undefined && property.dataType === 'boolean'
+              ? el('select', 'control') : el('input', 'control');
+            if (value.tagName === 'SELECT') {
+              for (const [id, title] of [['true', 'True'], ['false', 'False']]) {
+                const option = el('option', '', title);
+                option.value = id;
+                value.append(option);
+              }
+              value.value = String(item.value);
+            } else {
+              value.type = item.parameter === undefined && ['integer', 'decimal'].includes(property.dataType)
+                ? 'number' : 'text';
+              if (value.type === 'number') value.step = property.dataType === 'integer' ? '1' : 'any';
+              value.value = item.parameter ?? item.value ?? '';
+            }
+            value.addEventListener('change', () => {
+              const next = item.parameter !== undefined ? value.value :
+                property.dataType === 'boolean' ? value.value === 'true' :
+                ['integer', 'decimal'].includes(property.dataType) ? Number(value.value) : value.value;
+              change(item.parameter === undefined ? 'value' : 'parameter', next);
+            });
+            row.append(value);
+            inspector.append(row);
+          }
+        }
+      }
+      host.append(inspector);
+    }
     const layout = helper.ensure(state, graph, viewport.clientWidth || 700, viewport.clientHeight || 460);
 
     function draw() {
@@ -182,7 +305,8 @@
 
     let gesture = null;
     viewport.addEventListener('pointerdown', event => {
-      if ((event.button !== 0 && event.button !== 1) || event.target.closest('.blueprint-enter')) return;
+      if ((event.button !== 0 && event.button !== 1) ||
+        event.target.closest('button, select, input, textarea, label')) return;
       const card = event.target.closest('.blueprint-card');
       const key = card?.dataset.nodeKey;
       gesture = {

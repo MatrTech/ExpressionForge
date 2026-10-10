@@ -71,3 +71,37 @@ button.blueprint-card:hover,button.blueprint-card:focus-visible{outline:2px soli
 .blueprint-enter:hover,.blueprint-enter:focus-visible{background:#483680;outline:2px solid #ad9fff;outline-offset:1px}
 .blueprint-hint{margin:12px 0 0}
 @media(max-width:700px){.blueprint-viewport{height:385px}.blueprint-toolbar{align-items:flex-start}.blueprint-toolbar-actions{width:100%}}
+
+
+/* v0.4 increment 3: guided condition picker, typed socket controls, inline inspector. */
+.guided-condition-picker{background:#1b2a42;border:1px solid #415777;color:#e2ecff;border-radius:6px;padding:5px 7px;font:inherit;font-size:11px;max-width:245px;min-height:30px}
+.blueprint-palette{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.blueprint-palette .control{width:min(235px,56vw);min-height:31px;height:31px;font-size:11px}
+.blueprint-palette button{min-height:31px}
+.blueprint-scene .blueprint-socket-input,.blueprint-scene .blueprint-socket-output{
+  position:absolute;top:31px;z-index:5;width:21px;height:24px;border:1px solid #567da2;
+  border-radius:11px;color:#88d0ff;background:#172945;font-size:12px;line-height:12px;cursor:crosshair;padding:2px
+}
+.blueprint-scene .blueprint-socket-input{left:-10px}
+.blueprint-scene .blueprint-socket-output{right:-10px}
+.blueprint-scene .blueprint-socket-input:disabled{opacity:.5;cursor:not-allowed}
+.blueprint-scene .blueprint-socket-input:not(:disabled),.blueprint-scene .blueprint-socket-selected{
+  background:#2b6784;color:#fff;border-color:#a2e7ff;box-shadow:0 0 0 2px #6bcaff55
+}
+.blueprint-scene .blueprint-in-port{left:-2px}
+.blueprint-scene .blueprint-out-port{right:-2px}
+.blueprint-scene .blueprint-enter{right:5px;top:5px}
+.blueprint-scene .blueprint-expand{position:absolute;right:36px;top:5px;font-size:16px;font-weight:700;
+  color:#cad8fa;background:#273a57;border:1px solid #526c99;border-radius:5px;min-width:27px;height:26px;cursor:pointer}
+.blueprint-scene .blueprint-expand[aria-expanded="true"]{background:#574289}
+.blueprint-scene .blueprint-expand:hover,.blueprint-scene .blueprint-expand:focus-visible{outline:2px solid #ad9fff;outline-offset:1px}
+.blueprint-inline-inspector{display:flex;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-top:12px;
+  padding:14px;border:1px solid #485779;border-radius:10px;background:#15223a}
+.blueprint-inline-inspector>strong{width:100%;font-size:12px;color:#e4e8ff}
+.blueprint-inspector-field{display:flex;flex-direction:column;gap:6px;color:#a6b9d5;font-size:11px;min-width:160px;flex:1}
+.blueprint-inspector-field .control{font-size:12px}
+@media(max-width:700px){.blueprint-toolbar{gap:10px}.blueprint-palette{width:100%}.blueprint-palette .control{width:min(220px,64vw)}}
+
+/* Keep socket hit targets outside the node's visual border, and dim non-movable outputs. */
+.blueprint-scene .blueprint-card{overflow:visible}
+.blueprint-scene .blueprint-socket-output:disabled{opacity:.45;cursor:not-allowed}
