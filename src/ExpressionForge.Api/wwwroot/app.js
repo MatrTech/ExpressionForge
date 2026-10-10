@@ -168,7 +168,8 @@ function createNode(expression, entityId, remove, path = '$.query') {
   } else if (expression.type === 'arithmeticComparison') {
     const arithmetic = expression.left;
     if (arithmetic?.type === 'numericBinary' && arithmetic.left?.type === 'numericField' &&
-      arithmetic.right?.type === 'numericLiteral' && expression.right?.type === 'numericLiteral') {
+      ['numericLiteral', 'numericParameter'].includes(arithmetic.right?.type) &&
+      ['numericLiteral', 'numericParameter'].includes(expression.right?.type)) {
       const numeric = entity(entityId).properties.filter(p => ['integer', 'decimal'].includes(p.dataType));
       function modify(kind, value) {
         applyGraphEdit(() => ExpressionForgeGraphEdit.change(state.definition, state.catalog, path, { kind, value }));
@@ -177,17 +178,23 @@ function createNode(expression, entityId, remove, path = '$.query') {
         arithmetic.left.field, value => modify('numericField', value))));
       body.append(fieldRow('Calculation', select([
         { value: 'add', label: 'Add (+)' }, { value: 'subtract', label: 'Subtract (-)' },
-        { value: 'multiply', label: 'Multiply (×)' }
+        { value: 'multiply', label: 'Multiply (×)' }, { value: 'divide', label: 'Divide (÷)' }
       ], arithmetic.operator, value => modify('numericOperator', value))));
       for (const [title, value, kind] of [
-        ['Operand', arithmetic.right.value, 'numericOperand'], ['Threshold', expression.right.value, 'numericThreshold']
+        ['Operand', arithmetic.right, 'numericOperand'], ['Threshold', expression.right, 'numericThreshold']
       ]) {
+        body.append(fieldRow(title + ' source', select([
+          { value: 'literal', label: 'Fixed value' },
+          { value: 'parameter', label: 'Runtime parameter' }
+        ], value.type === 'numericLiteral' ? 'literal' : 'parameter',
+        source => modify(kind + 'Mode', source))));
         const input = element('input', 'control');
-        input.type = 'number';
-        input.step = 'any';
-        input.value = String(value);
-        input.addEventListener('change', () => modify(kind, Number(input.value)));
-        body.append(fieldRow(title, input));
+        input.type = value.type === 'numericLiteral' ? 'number' : 'text';
+        if (input.type === 'number') input.step = 'any';
+        input.value = String(value.type === 'numericLiteral' ? value.value : value.parameter);
+        input.addEventListener('change', () => modify(value.type === 'numericLiteral' ? kind : kind + 'Parameter',
+          value.type === 'numericLiteral' ? Number(input.value) : input.value));
+        body.append(fieldRow(value.type === 'numericLiteral' ? title : title + ' parameter name', input));
       }
       body.append(fieldRow('Compare', select(
         ['equals','notEquals','greaterThan','greaterThanOrEqual','lessThan','lessThanOrEqual']
