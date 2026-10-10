@@ -83,9 +83,9 @@ function header(node, title, remove) {
   return head;
 }
 function createNode(expression, entityId, remove, path = '$.query') {
-  const kind = expression.type === 'collectionExpression' ? 'collection' : expression.type === 'expression' ? 'comparison' : expression.type;
+  const kind = expression.type === 'collectionExpression' ? 'collection' : ['expression', 'fieldComparison'].includes(expression.type) ? 'comparison' : expression.type;
   const node = element('div', `node node-${kind}`);
-  const titles = { group: 'Logical group', comparison: 'Comparison', collection: 'Collection predicate', not: 'Negation' };
+  const titles = { group: 'Logical group', comparison: expression.type === 'fieldComparison' ? 'Field comparison' : 'Comparison', collection: 'Collection predicate', not: 'Negation' };
   const head = header(node, titles[kind] || kind, remove);
   const body = element('div', 'node-body');
 
@@ -143,6 +143,27 @@ function createNode(expression, entityId, remove, path = '$.query') {
         }
       }
     }
+    node.append(body);
+  } else if (expression.type === 'fieldComparison') {
+    const properties = entity(entityId).properties;
+    const left = property(entityId, expression.leftField);
+    const right = property(entityId, expression.rightField);
+    const ops = (a, b) => a && b && a.dataType === b.dataType ?
+      a.operators.filter(op => b.operators.includes(op) && (['equals', 'notEquals'].includes(op) ||
+        (['integer', 'decimal'].includes(a.dataType) &&
+          ['greaterThan', 'greaterThanOrEqual', 'lessThan', 'lessThanOrEqual'].includes(op)))) : [];
+    body.append(fieldRow('Left field', select(properties.filter(p => ops(p, right).length)
+      .map(p => ({ value: p.id, label: p.displayName })), expression.leftField,
+    value => applyGraphEdit(() => ExpressionForgeGraphEdit.change(state.definition, state.catalog, path,
+      { kind: 'leftField', value })))));
+    body.append(fieldRow('Right field', select(properties.filter(p => ops(left, p).length)
+      .map(p => ({ value: p.id, label: p.displayName })), expression.rightField,
+    value => applyGraphEdit(() => ExpressionForgeGraphEdit.change(state.definition, state.catalog, path,
+      { kind: 'rightField', value })))));
+    body.append(fieldRow('Operator', select(ops(left, right).map(op => ({ value: op,
+      label: state.catalog.operators.find(x => x.id === op)?.displayName || op })), expression.operator,
+    value => applyGraphEdit(() => ExpressionForgeGraphEdit.change(state.definition, state.catalog, path,
+      { kind: 'operator', value })))));
     node.append(body);
   } else if (expression.type === 'group') {
     head.insertBefore(select([{ value: 'and', label: 'AND' }, { value: 'or', label: 'OR' }], expression.operator, value => {
@@ -514,7 +535,7 @@ async function start() {
   $('load-json').addEventListener('click', async () => {
     try {
       const value = JSON.parse($('json').value);
-      if (!value || !value.query || !['group', 'expression', 'collectionExpression', 'not'].includes(value.query.type))
+      if (!value || !value.query || !['group', 'expression', 'fieldComparison', 'collectionExpression', 'not'].includes(value.query.type))
         throw new Error('Load a supported expression tree.');
       const requested = value.catalogId ?? state.catalog.catalogId;
       if (!state.catalogs.some(item => item.id === requested))

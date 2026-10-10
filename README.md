@@ -10,7 +10,7 @@
 
 ExpressionForge is a .NET 10 metadata-driven expression engine with a Blueprint-inspired web editor. Users compose nested predicates using blocks. The frontend discovers fields, relationships and operators from the backend, then sends a provider-independent JSON expression tree (AST) for validation and SQL Server compilation.
 
-> **Published version 0.2.0 — expression correctness preview.** Development on `main` includes a metadata-driven Blueprint editor with movable nodes, typed subgraphs, AST editing and undo/redo toward v0.4.0. Browser acceptance and final release validation are in progress. The published package version has not been advanced yet.
+> **Published version 0.2.0 — expression correctness preview.** Development on `main` includes the metadata-driven Blueprint editor and the first v0.5 value-expression increment (field-to-field comparisons). Formal v0.4/v0.5 package releases remain separate from these development merges. The published package version has not been advanced yet.
 
 ## Try it
 
@@ -61,6 +61,8 @@ Do not check connection strings, passwords or SQL Server credentials into source
 ```
 
 An expanded example lives in [`examples/customer-query.json`](examples/customer-query.json). The [interactive advanced example gallery](https://matrtech.github.io/ExpressionForge/#examples) provides five complex ASTs with runtime bindings; the same fixtures are validated and executed in CI.
+
+A `fieldComparison` compares two metadata-approved fields in the same entity scope without runtime values. Example: `{ "type": "fieldComparison", "leftField": "Id", "operator": "lessThan", "rightField": "Age" }`. Fields must have identical data types. Equality/inequality work for supported types; range comparisons are restricted to numeric fields. SQL Server NULL values use normal three-valued semantics.
 
 A `group` combines child predicates with `and`/`or`. An `expression` compares a catalog field to a typed JSON scalar. A `collectionExpression` evaluates an `any`/`none`/`all` predicate in the related entity's scope. A `not` negates a predicate. Query strings never contain SQL fragments.
 

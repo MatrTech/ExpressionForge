@@ -66,14 +66,25 @@ public sealed class QueryScopeResolver(QueryCatalog catalog)
             return;
         }
 
-        var fieldType = expression is ComparisonExpression candidate
-            ? entity.Properties.FirstOrDefault(p => p.Id == candidate.Field)?.DataType
-            : null;
+        var fieldType = expression switch
+        {
+            ComparisonExpression comparison => entity.Properties.FirstOrDefault(p => p.Id == comparison.Field)?.DataType,
+            FieldComparisonExpression comparison => entity.Properties.FirstOrDefault(p => p.Id == comparison.LeftField)?.DataType,
+            _ => null
+        };
         scopes.Add(new(path, entity.Id, expression.Id, fieldType, entity.Properties, entity.Relationships));
         switch (expression)
         {
             case ComparisonExpression comparison when fieldType is null:
                 issues.Add(new(path + ".field", "unknownField", $"Unknown field '{comparison.Field}' on '{entity.Id}'.", expression.Id));
+                break;
+            case FieldComparisonExpression comparison:
+                if (entity.Properties.All(p => p.Id != comparison.LeftField))
+                    issues.Add(new(path + ".leftField", "unknownField",
+                        $"Unknown field '{comparison.LeftField}' on '{entity.Id}'.", expression.Id));
+                if (entity.Properties.All(p => p.Id != comparison.RightField))
+                    issues.Add(new(path + ".rightField", "unknownField",
+                        $"Unknown field '{comparison.RightField}' on '{entity.Id}'.", expression.Id));
                 break;
             case GroupExpression group:
                 if (group.Expressions is null || group.Expressions.Count == 0)

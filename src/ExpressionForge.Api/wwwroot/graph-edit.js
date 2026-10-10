@@ -47,6 +47,20 @@
     else if (ref.slot.index === undefined) ref.parent[ref.slot.prop] = node;
     else ref.parent[ref.slot.prop][ref.slot.index] = node;
   }
+  const numericOps = new Set(['equals', 'notEquals', 'greaterThan', 'greaterThanOrEqual', 'lessThan', 'lessThanOrEqual']);
+  function fieldOperators(left, right) {
+    if (!left || !right || left.dataType !== right.dataType) return [];
+    const allowed = ['integer', 'decimal'].includes(left.dataType) ? numericOps : new Set(['equals', 'notEquals']);
+    return left.operators.filter(op => allowed.has(op) && right.operators.includes(op));
+  }
+  function fieldPair(catalog, entityId) {
+    const properties = entity(catalog, entityId)?.properties || [];
+    for (const left of properties) {
+      const right = properties.find(candidate => candidate.id !== left.id && fieldOperators(left, candidate).length);
+      if (right) return [left, right];
+    }
+    return null;
+  }
   function makePredicate(catalog, entityId, spec) {
     if (!entity(catalog, entityId)) throw Error('Entity scope is unavailable.');
     if (spec.kind === 'expression') {
@@ -55,6 +69,12 @@
       const operator = meta.operators[0];
       return { type: 'expression', field: meta.id, operator,
         ...(nullCheck(operator) ? {} : { value: defaultValue(meta.dataType) }) };
+    }
+    if (spec.kind === 'fieldComparison') {
+      const [left, right] = fieldPair(catalog, entityId) || [];
+      if (!left || !right) throw Error('No compatible field pair in this entity scope.');
+      return { type: 'fieldComparison', leftField: left.id, rightField: right.id,
+        operator: fieldOperators(left, right)[0] };
     }
     if (spec.kind === 'collection') {
       const rel = relation(catalog, entityId, spec.collection);
@@ -75,6 +95,7 @@
     const fields = (meta.properties || []).filter(p => p.operators?.length);
     return [
       ...fields.map(p => ({ kind: 'expression', field: p.id, label: p.displayName || p.id })),
+      ...(fieldPair(catalog, entityId) ? [{ kind: 'fieldComparison', label: 'Compare two fields' }] : []),
       ...(meta.relationships || []).filter(r => entity(catalog, r.targetEntity)?.properties?.some(p => p.operators?.length))
         .map(r => ({ kind: 'collection', collection: r.id, label: (r.displayName || r.id) + ' · Any' })),
       ...(fields.length ? [{ kind: 'group', operator: 'and', label: 'AND group' },
@@ -103,6 +124,24 @@
     } else if (node.type === 'collectionExpression' && patch.kind === 'quantifier') {
       if (!['any', 'none', 'all'].includes(patch.value)) throw Error('Unsupported collection quantifier.');
       node.quantifier = patch.value;
+    } else if (node.type === 'fieldComparison') {
+      if (!['leftField', 'rightField', 'operator'].includes(patch.kind))
+        throw Error('Unsupported field comparison change.');
+      if (patch.kind === 'leftField' || patch.kind === 'rightField') {
+        const updated = field(catalog, entityId, patch.value);
+        if (!updated) throw Error('Field is not available in this entity scope.');
+        const opposite = field(catalog, entityId, patch.kind === 'leftField' ? node.rightField : node.leftField);
+        const operations = fieldOperators(patch.kind === 'leftField' ? updated : opposite,
+          patch.kind === 'rightField' ? updated : opposite);
+        if (!operations.length) throw Error('Field types or operators are incompatible.');
+        node[patch.kind] = updated.id;
+        if (!operations.includes(node.operator)) node.operator = operations[0];
+      } else {
+        const left = field(catalog, entityId, node.leftField);
+        const right = field(catalog, entityId, node.rightField);
+        if (!fieldOperators(left, right).includes(patch.value)) throw Error('Operator is unavailable.');
+        node.operator = patch.value;
+      }
     } else if (node.type === 'expression') {
       const meta = field(catalog, entityId, node.field);
       if (patch.kind === 'field') {
