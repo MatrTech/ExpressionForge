@@ -27,11 +27,15 @@ ExpressionForge is a metadata-driven expression and query engine with a visual e
 
 ## Current work: v0.2.0
 
-**Branch:** `feature/v0.2.0-correctness`
+**Integration strategy:** Small, independently tested PRs merge into `main`. The version remains 0.1.0 until all v0.2.0 exit criteria are satisfied.
 
-The first increment adds optional stable `id` properties to expression nodes and includes those IDs in validation diagnostics. Existing v1 JSON without IDs stays valid. The editor generates IDs when serializing.
+Completed increments:
+- Stable optional expression node IDs and structured validation diagnostics, compatible with existing JSON v1.
+- Typed runtime parameter references and bound validation/compile/preview API endpoints.
+- Metadata-driven editor runtime parameter inspector, with nested collection scoping and client-side binding tests.
+- .NET 10 CI with MSTest, editor tests and build artifacts; verified green on `main`.
 
-Remaining before a v0.2.0 release: runtime parameter references and bindings, exhaustive null/type/quantifier tests against SQL Server, and a verified green CI pipeline.
+Remaining before a v0.2.0 release: SQL Server integration tests (Testcontainers) for null/type/quantifier semantics, plus final acceptance and release verification.
 
 ## Dependencies
 
