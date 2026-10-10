@@ -21,7 +21,7 @@
     function countValue(value, depth) {
       if (depth > 16) throw new Error('Numeric value expressions cannot exceed 16 levels.');
       if (++totalNodes > 256) throw new Error('Expressions cannot exceed 256 nodes.');
-      if (!value || !['numericField', 'numericLiteral', 'numericBinary'].includes(value.type))
+      if (!value || !['numericField', 'numericLiteral', 'numericParameter', 'numericBinary'].includes(value.type))
         throw new Error('Unsupported numeric value expression.');
       if (value.type === 'numericBinary') {
         countValue(value.left, depth + 1);
