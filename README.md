@@ -62,6 +62,23 @@ Do not check connection strings, passwords or SQL Server credentials into source
 
 An expanded example lives in [`examples/customer-query.json`](examples/customer-query.json). The [interactive advanced example gallery](https://matrtech.github.io/ExpressionForge/#examples) provides five complex ASTs with runtime bindings; the same fixtures are validated and executed in CI.
 
+**String and date functions (v0.5 development):** Typed numeric values now include `stringLength` and `dateDiffDays`, which can be used wherever a numeric value is allowed, including inside arithmetic trees and collection predicates. Both reference approved fields in the active entity scope. For SQL Server, `stringLength` follows `LEN` semantics (trailing ordinary spaces are not counted), while `dateDiffDays` counts signed day boundaries between fields of matching `date` or `dateTime` types. SQL NULL inputs propagate to NULL; comparisons with NULL do not select rows.
+
+```json
+{
+  "type": "arithmeticComparison",
+  "left": {
+    "type": "dateDiffDays",
+    "startField": "StartedAt",
+    "endField": "FinishedAt"
+  },
+  "operator": "greaterThan",
+  "right": { "type": "numericLiteral", "value": 7 }
+}
+```
+
+The editor offers **Text length** when a string field is available, and **Days between dates** when at least two compatible date fields are exposed. No arbitrary SQL functions or unchecked identifiers are accepted.
+
 **Typed arithmetic (v0.5 development):** The `arithmeticComparison` predicate compares nested numeric values. `numericField` references a metadata-approved integer/decimal property, `numericLiteral` is a parameterized number, and `numericBinary` combines two values using `add`, `subtract`, `multiply` or `divide`.
 
 ```json
