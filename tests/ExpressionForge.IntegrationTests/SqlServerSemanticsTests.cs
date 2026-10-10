@@ -99,7 +99,6 @@ public sealed class SqlServerSemanticsTests
                 (5, 4, 120.00, NULL);
             """,
             """
-            """
             UPDATE dbo.Customers SET BalanceText = CASE Id
                 WHEN 1 THEN N'123.50' WHEN 2 THEN N'0'
                 WHEN 3 THEN N'not-a-number' WHEN 5 THEN N'-2.75' END;
@@ -107,6 +106,7 @@ public sealed class SqlServerSemanticsTests
                 WHEN 1 THEN N'120.50' WHEN 2 THEN N'unparsable'
                 WHEN 3 THEN N'15' WHEN 4 THEN N'225' END;
             """,
+            """
             UPDATE dbo.Customers SET
                 StartedAt = CASE Id
                     WHEN 1 THEN '2026-01-01' WHEN 2 THEN '2026-01-01'
