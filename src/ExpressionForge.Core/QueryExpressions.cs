@@ -19,6 +19,7 @@ public sealed record QueryDefinition
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(ComparisonExpression), "expression")]
 [JsonDerivedType(typeof(FieldComparisonExpression), "fieldComparison")]
+[JsonDerivedType(typeof(ArithmeticComparisonExpression), "arithmeticComparison")]
 [JsonDerivedType(typeof(GroupExpression), "group")]
 [JsonDerivedType(typeof(CollectionExpression), "collectionExpression")]
 [JsonDerivedType(typeof(NotExpression), "not")]
