@@ -35,7 +35,9 @@ Completed increments:
 - Metadata-driven editor runtime parameter inspector, with nested collection scoping and client-side binding tests.
 - .NET 10 CI with MSTest, editor tests and build artifacts; verified green on `main`.
 
-Remaining before a v0.2.0 release: SQL Server integration tests (Testcontainers) for null/type/quantifier semantics, plus final acceptance and release verification.
+Completed: SQL Server 2022 Testcontainers coverage for null/type/quantifier semantics and real database execution. The public GitHub Pages site now shares five complex AST fixtures with unit and SQL Server integration tests, so documented examples cannot drift silently from the engine.
+
+Remaining before a v0.2.0 release: final correctness/compatibility review, package version update, tag and verified GitHub Release. Dynamic metadata and type registration belong to v0.3.0.
 
 ## Dependencies
 
