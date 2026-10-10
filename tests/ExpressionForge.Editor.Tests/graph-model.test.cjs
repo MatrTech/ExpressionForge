@@ -105,3 +105,26 @@ test('unknown roots and malformed group structures are rejected explicitly', () 
   assert.throws(() => project({ ...fixture, entity: 'NotARealEntity' }, catalog), /not available/);
   assert.throws(() => project({ ...fixture, query: { type: 'group', operator: 'and' } }, catalog), /expressions array/);
 });
+
+test('graph projection enforces the same structural limits as the backend', () => {
+  let deep = { type: 'expression', field: 'Archived', operator: 'equals', value: false };
+  for (let index = 0; index < 16; index++) deep = { type: 'not', expression: deep };
+  assert.throws(() => project({ version: 1, entity: 'Project', query: deep }, catalog), /16 levels/);
+
+  const query = { type: 'group', operator: 'and', expressions: Array.from({ length: 256 },
+    () => ({ type: 'expression', field: 'Archived', operator: 'equals', value: false })) };
+  assert.throws(() => project({ version: 1, entity: 'Project', query }, catalog), /256 nodes/);
+});
+
+test('graph export rejects forged cross-scope and duplicated connections', () => {
+  const projection = project(fixture, catalog);
+  const rootGraph = projection.graphs.find(graph => graph.kind === 'root');
+  const budgetLink = rootGraph.edges.find(edge => edge.from === 'id:project-budget');
+  const duplicate = structuredClone(projection);
+  duplicate.graphs[0].edges.push({ ...budgetLink, inputIndex: 7 });
+  assert.throws(() => toDefinition(duplicate), /share AST nodes/);
+
+  const mismatched = structuredClone(projection);
+  mismatched.graphs[0].nodes.find(node => node.key === 'id:project-budget').output.entityId = 'Task';
+  assert.throws(() => toDefinition(mismatched), /incompatible predicate/);
+});
