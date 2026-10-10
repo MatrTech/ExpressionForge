@@ -23,3 +23,29 @@
 .parameter-detail{font-size:10px;color:#91a5c4;overflow-wrap:anywhere}
 .parameter-error{font-size:11px;color:#ff9e9e;line-height:1.4}
 .runtime-parameter .control{margin:0}
+/* v0.4 increment 1: optional, read-only scoped Blueprint projection. */
+.editor-modes{display:flex;gap:8px;flex-wrap:wrap;margin:24px 0 0}
+.editor-modes [aria-pressed="true"]{border-color:#897bf8}
+.blueprint-preview{padding-top:19px;min-height:240px;max-width:100%}
+.blueprint-breadcrumbs{display:flex;align-items:center;flex-wrap:wrap;gap:3px;margin-bottom:12px}
+.blueprint-breadcrumbs button:disabled{color:#f0efff;opacity:1;cursor:default}
+.blueprint-separator{font-size:17px;color:#7086ad}
+.blueprint-scope{font-size:11px;color:#a9bdde;margin-bottom:12px}
+.blueprint-scroller{overflow:auto;padding:18px 14px 26px;border:1px solid #2d3b55;border-radius:10px;background:#101a2b;min-height:195px}
+.blueprint-columns{display:flex;align-items:center;gap:8px;min-width:max-content}
+.blueprint-column{display:flex;flex-direction:column;gap:15px;min-width:160px;max-width:235px}
+.blueprint-arrow{color:#90a3ce;font-size:21px;flex-shrink:0}
+.blueprint-card{display:block;text-align:left;color:#e7f0ff;border:1px solid #566a8e;background:#192842;border-radius:9px;padding:12px 10px;min-width:165px;max-width:225px;overflow-wrap:anywhere}
+button.blueprint-card{cursor:pointer;width:100%}
+button.blueprint-card:hover,button.blueprint-card:focus-visible{outline:2px solid #9a8afe;outline-offset:2px;background:#28395b}
+.blueprint-card-title{display:flex;align-items:flex-start;gap:7px;font-size:12px;line-height:1.5}
+.blueprint-card-title strong{font-weight:750;flex:1}
+.blueprint-port{color:#82c9ff;font-size:11px}
+.blueprint-open{margin-left:auto;color:#b9aaff;font-size:15px}
+.blueprint-card small{display:block;color:#a4b4d0;font-size:10px;margin:6px 0 0 15px}
+.blueprint-group{border-color:#8269be}
+.blueprint-collectionExpression{border-color:#4ba994}
+.blueprint-not{border-color:#ad758b}
+.blueprint-sink{border-color:#8c80d9}
+.blueprint-hint{color:#899ab8;font-size:11px;line-height:1.6;margin-top:12px}
+@media(max-width:700px){.blueprint-preview{padding-top:12px}.blueprint-scroller{padding:12px}.editor-modes{margin-top:15px}}
