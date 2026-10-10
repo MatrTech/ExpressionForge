@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0f1d">
+  <meta name="description" content="ExpressionForge — a metadata-driven .NET query engine. Design recursive expressions, validate typed ASTs, and compile parameterized SQL Server queries.">
+  <meta property="og:title" content="ExpressionForge — Build queries visually">
+  <meta property="og:description" content="A metadata-driven .NET 10 query engine with a visual expression editor and safe SQL Server compilation.">
+  <meta property="og:type" content="website">
+  <title>ExpressionForge — Build queries visually</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+  <header class="site-header">
+    <nav class="nav shell" aria-label="Main navigation">
+      <a class="wordmark" href="#home" aria-label="ExpressionForge home"><span class="mark" aria-hidden="true">◇</span><span>Expression<span class="text-accent">Forge</span></span></a>
+      <div class="nav-links">
+        <a href="#playground">Playground</a>
+        <a href="#features">Features</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#roadmap">Roadmap</a>
+        <a class="nav-github" href="https://github.com/MatrTech/ExpressionForge" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+      </div>
+      <a class="mobile-github" href="https://github.com/MatrTech/ExpressionForge" aria-label="View GitHub repository">GitHub ↗</a>
+    </nav>
+  </header>
+  <main id="main">
+    <section class="hero shell" id="home">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="pulse" aria-hidden="true"></span> OPEN SOURCE · .NET 10 · EARLY PREVIEW</div>
+        <h1>Complex queries.<br><span class="gradient-text">Clear thinking.</span></h1>
+        <p class="hero-lead">Build expressions visually. Validate them structurally. Compile them safely. One portable query model, driven by metadata rather than hardcoded forms.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#playground">Explore the playground <span aria-hidden="true">↗</span></a>
+          <a class="button outline" href="https://github.com/MatrTech/ExpressionForge">View source <span aria-hidden="true">→</span></a>
+        </div>
+        <div class="hero-facts"><span><i aria-hidden="true"></i> Recursive JSON AST</span><span><i aria-hidden="true"></i> SQL Server compiler</span><span><i aria-hidden="true"></i> MIT licensed</span></div>
+      </div>
+      <div class="hero-art" aria-label="Illustration of an expression graph">
+        <div class="art-grid" aria-hidden="true"></div>
+        <div class="art-top"><span class="art-label">EXPRESSION GRAPH</span><span class="art-indicator"><span class="pulse"></span> Query definition</span></div>
+        <div class="art-flow">
+          <div class="art-node art-root"><span class="node-symbol purple">◇</span><div><span class="node-overline">LOGIC</span><strong>AND group</strong></div><span class="node-socket"></span></div>
+          <div class="art-connector" aria-hidden="true"><span></span><span></span></div>
+          <div class="art-children">
+            <div class="art-node"><span class="node-symbol blue">≡</span><div><span class="node-overline">CUSTOMER</span><strong>FirstName = John</strong></div></div>
+            <div class="art-node"><span class="node-symbol orange">∀</span><div><span class="node-overline">RELATIONSHIP</span><strong>Orders · ANY</strong><small>Total &gt; @minimumTotal</small></div></div>
+          </div>
+          <div class="art-output"><span class="art-signal"></span> Valid AST <span class="art-separator">/</span> Typed parameters <span class="art-separator">/</span> SQL</div>
+        </div>
+        <div class="art-bottom"><span>AST v1</span><span>01 / COMPOSABLE</span></div>
+      </div>
+    </section>
+
+    <section class="playground-section" id="playground">
+      <div class="shell">
+        <div class="section-head"><div><div class="section-kicker">01 / INTERACTIVE PLAYGROUND</div><h2>From intent to expression.</h2><p>Change the conditions and watch the portable query definition update instantly.</p></div><span class="demo-badge">CLIENT-SIDE DEMO</span></div>
+        <div class="playground">
+          <div class="demo-builder">
+            <div class="panel-header"><span class="panel-icon">◇</span><div><strong>Query builder</strong><small>Entity: Customer</small></div><span class="panel-dot"></span></div>
+            <div class="builder-body">
+              <div class="builder-hint">MATCH ALL CONDITIONS <span>AND</span></div>
+              <div class="condition">
+                <span class="condition-number">01</span><div class="condition-content"><label for="customer-name">Customer · FirstName</label><div class="condition-control"><span class="operator">equals</span><input id="customer-name" type="text" value="John" maxlength="80" autocomplete="off" aria-label="Customer first name"></div></div>
+              </div>
+              <div class="condition">
+                <span class="condition-number">02</span><div class="condition-content"><label for="quantifier">Customer · Orders</label><div class="condition-control"><span class="operator">quantifier</span><select id="quantifier"><option value="any">ANY — at least one</option><option value="all">ALL — every order</option><option value="none">NONE — no orders</option></select></div><div class="nested-condition"><span class="nested-label">↳ Order · Total</span><span class="operator">greater than</span><label class="currency-input" for="minimum-total"><span>$</span><input id="minimum-total" type="number" min="0" max="1000000" step="1" value="100" aria-label="Minimum order total"></label></div></div>
+              </div>
+              <div class="builder-footer"><span class="green-dot"></span> JSON updates as you edit <button class="text-button" id="reset-demo" type="button">↺ Reset</button></div>
+            </div>
+          </div>
+          <div class="demo-output">
+            <div class="output-header"><div class="output-tabs" role="tablist" aria-label="Output format"><button id="tab-ast" class="tab active" type="button" role="tab" aria-selected="true" aria-controls="demo-code">JSON AST</button><button id="tab-sql" class="tab" type="button" role="tab" aria-selected="false" aria-controls="demo-code">SQL concept</button></div><button class="copy-button" id="copy-code" type="button" aria-label="Copy displayed code">Copy <span aria-hidden="true">↗</span></button></div>
+            <pre class="code-block" id="demo-code" tabindex="0" aria-live="polite"></pre>
+            <div class="output-footnote" id="demo-note">Portable AST v1. Runtime bindings are kept separate from the saved definition.</div>
+          </div>
+        </div>
+        <div class="demo-disclaimer"><span aria-hidden="true">ⓘ</span> This is a browser-only illustration of the AST. SQL shown here is explanatory, not produced by the live .NET compiler. <a href="#get-started">Run the full editor locally →</a></div>
+      </div>
+    </section>
+
+    <section class="features-section shell" id="features">
+      <div class="section-kicker">02 / CAPABILITIES</div><h2>Built for expressive queries.<br><span class="muted-heading">Engineered for control.</span></h2>
+      <div class="feature-grid">
+        <article class="feature"><div class="feature-icon violet">⌘</div><h3>Composable expression trees</h3><p>Combine AND, OR, NOT and collection predicates into a recursive, versioned JSON definition.</p><span class="feature-tag">AST v1</span></article>
+        <article class="feature"><div class="feature-icon cyan">▤</div><h3>Metadata-first design</h3><p>Entity fields, relationships and allowed operators are described by the backend—not embedded in the editor.</p><span class="feature-tag">CATALOG</span></article>
+        <article class="feature"><div class="feature-icon amber">⟡</div><h3>Safe SQL compilation</h3><p>Allowlisted identifiers, typed parameter binding and bounded read-only queries for SQL Server.</p><span class="feature-tag">SQL SERVER</span></article>
+        <article class="feature"><div class="feature-icon green">✓</div><h3>Validation with context</h3><p>Semantic validation returns structured diagnostics with paths and stable node IDs for editor feedback.</p><span class="feature-tag">DIAGNOSTICS</span></article>
+        <article class="feature"><div class="feature-icon blue">∑</div><h3>Collection semantics</h3><p>Express ANY, ALL and NONE across relationships with tested SQL null and empty-collection behavior.</p><span class="feature-tag">QUANTIFIERS</span></article>
+        <article class="feature"><div class="feature-icon pink">◈</div><h3>Reusable runtime inputs</h3><p>Define named parameters once and provide typed values at execution time without changing the saved query.</p><span class="feature-tag">BINDINGS</span></article>
+      </div>
+    </section>
+
+    <section class="architecture-section" id="architecture">
+      <div class="shell architecture-grid"><div><div class="section-kicker">03 / ARCHITECTURE</div><h2>One model.<br><span class="muted-heading">Clear boundaries.</span></h2><p>The editor describes intent. The engine validates structure and types. The compiler turns validated expressions into SQL Server queries with bound parameters.</p><a class="inline-link" href="https://github.com/MatrTech/ExpressionForge/blob/main/docs/architecture.md">Read architecture notes ↗</a></div>
+      <div class="pipeline" aria-label="ExpressionForge processing pipeline"><div class="pipeline-step"><span>01</span><strong>Visual editor</strong><small>Metadata-driven inputs</small></div><div class="pipeline-arrow" aria-hidden="true">↓</div><div class="pipeline-step"><span>02</span><strong>Versioned JSON AST</strong><small>Portable query definition</small></div><div class="pipeline-arrow" aria-hidden="true">↓</div><div class="pipeline-step"><span>03</span><strong>Validation &amp; typing</strong><small>Allowlisted fields and operators</small></div><div class="pipeline-arrow" aria-hidden="true">↓</div><div class="pipeline-step highlight-step"><span>04</span><strong>SQL Server compiler</strong><small>Parameterized, bounded SELECT</small></div></div></div>
+    </section>
+
+    <section class="roadmap-section shell" id="roadmap"><div class="section-head"><div><div class="section-kicker">04 / ROADMAP</div><h2>Build the foundation.<br><span class="muted-heading">Then unlock the canvas.</span></h2></div><a class="inline-link" href="https://github.com/MatrTech/ExpressionForge/blob/main/docs/ROADMAP.md">Full roadmap ↗</a></div>
+      <div class="milestones"><div class="milestone done"><span class="milestone-index">0.1.0</span><div><strong>Foundation</strong><small>AST, metadata, validation, SQL compiler, editor</small></div><span class="milestone-status">FOUNDATION</span></div><div class="milestone current"><span class="milestone-index">0.2.0</span><div><strong>Expression correctness</strong><small>Node identity, runtime bindings, SQL Server integration tests</small></div><span class="milestone-status">IN DEVELOPMENT</span></div><div class="milestone"><span class="milestone-index">0.3.0</span><div><strong>Dynamic metadata &amp; types</strong><small>Pluggable entity definitions and type resolution</small></div><span class="milestone-status">PLANNED</span></div><div class="milestone"><span class="milestone-index">0.4.0</span><div><strong>Blueprint-style canvas</strong><small>Free-form nodes, typed sockets, drag &amp; drop</small></div><span class="milestone-status">PLANNED</span></div></div>
+    </section>
+
+    <section class="get-started-section" id="get-started"><div class="shell start-grid"><div><div class="section-kicker">05 / GET STARTED</div><h2>Clone. Run. Compose.</h2><p>Run the actual editor and .NET API locally. Validation and SQL compilation work without a database; row preview requires SQL Server.</p><a class="button primary" href="https://github.com/MatrTech/ExpressionForge#try-it">Setup instructions ↗</a></div><div class="terminal"><div class="terminal-bar"><span class="terminal-lights"><i></i><i></i><i></i></span><span>terminal</span></div><pre><span class="terminal-comment"># Requires .NET 10 SDK</span>
+<span class="terminal-prompt">$</span> git clone https://github.com/MatrTech/ExpressionForge.git
+<span class="terminal-prompt">$</span> cd ExpressionForge
+<span class="terminal-prompt">$</span> dotnet restore ExpressionForge.slnx
+<span class="terminal-prompt">$</span> dotnet run --project src/ExpressionForge.Api --urls http://localhost:5054</pre></div></div></section>
+  </main>
+  <footer class="footer"><div class="shell footer-inner"><a class="wordmark" href="#home"><span class="mark">◇</span><span>Expression<span class="text-accent">Forge</span></span></a><span>Open source · MIT License · Built with .NET</span><div><a href="https://github.com/MatrTech/ExpressionForge">GitHub ↗</a><a href="https://github.com/MatrTech/ExpressionForge/issues">Issues ↗</a></div></div></footer>
+</body>
+</html>
