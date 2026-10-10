@@ -69,9 +69,9 @@ public sealed class FieldComparisonTests
     }
 
     [TestMethod]
-    public void Validate_InvalidOperator_RejectsStringRangeAndNullChecks()
+    public void Validate_InvalidOperator_RejectsNonComparisonAndNullOperators()
     {
-        foreach (var op in new[] { "greaterThan", "isNull", "contains" })
+        foreach (var op in new[] { "startsWith", "isNull", "contains" })
         {
             var definition = Parse($$"""
                 {"type":"fieldComparison","leftField":"Id","operator":"{{op}}","rightField":"Age"}
