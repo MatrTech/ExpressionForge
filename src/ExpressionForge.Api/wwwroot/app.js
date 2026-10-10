@@ -1,7 +1,7 @@
 'use strict';
 
 const $ = id => document.getElementById(id);
-const state = { catalog: null, definition: null, parameters: {} };
+const state = { catalog: null, catalogs: [], definition: null, parameters: {}, drafts: new Map() };
 const sample = {
   version: 1,
   entity: 'Customer',
@@ -310,17 +310,48 @@ async function perform(endpoint) {
     show(error.message, 'error');
   }
 }
+async function activateCatalog(catalogId, imported = null) {
+  const response = await fetch(ExpressionForgeCatalogs.metadataUrl(catalogId));
+  if (!response.ok) throw new Error(`Cannot load catalog ${catalogId}: HTTP ${response.status}`);
+  const metadata = await response.json();
+  if (metadata.catalogId !== catalogId)
+    throw new Error('Catalog metadata did not match the selected catalog.');
+
+  const draft = state.drafts.get(catalogId);
+  const definition = imported
+    ? ExpressionForgeCatalogs.importDefinition(imported, metadata)
+    : draft?.definition ?? ExpressionForgeCatalogs.makeDefinition(metadata, sample);
+
+  if (state.catalog && state.definition)
+    state.drafts.set(state.catalog.catalogId, { definition: structuredClone(state.definition), parameters: { ...state.parameters } });
+  state.catalog = metadata;
+  state.definition = definition;
+  state.parameters = imported ? {} : { ...(draft?.parameters ?? {}) };
+  $('catalog').value = catalogId;
+
+  const options = metadata.entities.map(item => ({ value: item.id, label: item.displayName }));
+  $('entity').replaceWith(Object.assign(select(options, definition.entity, value => {
+    state.definition.entity = value;
+    state.definition.query = group(value);
+    render(); show('');
+  }), { id: 'entity' }));
+  $('connection').textContent = `Catalog ${catalogId} · ${metadata.catalogVersion}`;
+  render();
+}
+
 async function start() {
   for (const endpoint of ['validate', 'compile', 'preview']) $(endpoint).addEventListener('click', () => perform(endpoint));
-  $('reset').addEventListener('click', () => { state.definition = structuredClone(sample); state.parameters = {}; render(); show(''); });
-  $('load-json').addEventListener('click', () => {
+  $('reset').addEventListener('click', () => { state.definition = ExpressionForgeCatalogs.makeDefinition(state.catalog, sample); state.parameters = {}; render(); show(''); });
+  $('load-json').addEventListener('click', async () => {
     try {
       const value = JSON.parse($('json').value);
-      if (!value || !entity(value.entity) || !value.query || !['group', 'expression', 'collectionExpression', 'not'].includes(value.query.type))
-        throw new Error('Select a registered entity and a supported expression root.');
-      const previous = state.definition;
-      try { state.definition = value; state.parameters = {}; render(); } catch (error) { state.definition = previous; render(); throw error; }
-      show('JSON loaded. Validate it before execution.', 'success');
+      if (!value || !value.query || !['group', 'expression', 'collectionExpression', 'not'].includes(value.query.type))
+        throw new Error('Load a supported expression tree.');
+      const requested = value.catalogId ?? state.catalog.catalogId;
+      if (!state.catalogs.some(item => item.id === requested))
+        throw new Error('The query references an unavailable catalog.');
+      await activateCatalog(requested, value);
+      show('JSON loaded in its registered catalog. Validate before execution.', 'success');
     } catch (error) { show(`Invalid JSON: ${error.message}`, 'error'); }
   });
   $('copy-json').addEventListener('click', async () => {
@@ -328,18 +359,21 @@ async function start() {
     catch { show('Clipboard access is unavailable. Select and copy the JSON manually.', 'error'); }
   });
   try {
-    const response = await fetch('/api/query/metadata');
-    if (!response.ok) throw new Error(`Metadata request failed: ${response.status}`);
-    state.catalog = await response.json();
-    state.definition = structuredClone(sample);
-    const options = state.catalog.entities.map(e => ({ value: e.id, label: e.displayName }));
-    $('entity').replaceWith(Object.assign(select(options, state.definition.entity, value => {
-      state.definition.entity = value;
-      state.definition.query = group(value);
-      render(); show('');
-    }), { id: 'entity' }));
-    $('connection').textContent = `Catalog ${state.catalog.catalogVersion} connected`;
-    render();
+    const response = await fetch('/api/query/catalogs');
+    if (!response.ok) throw new Error(`Catalog list failed: HTTP ${response.status}`);
+    const listing = await response.json();
+    state.catalogs = listing.catalogs;
+    if (!state.catalogs.length) throw new Error('No metadata catalogs are available for this user.');
+    const initialId = state.catalogs.some(item => item.id === listing.defaultCatalog)
+      ? listing.defaultCatalog : state.catalogs[0].id;
+    $('catalog').replaceWith(Object.assign(select(
+      state.catalogs.map(item => ({ value: item.id, label: item.displayName })),
+      initialId,
+      async selected => {
+        try { await activateCatalog(selected); show(''); }
+        catch (error) { $('catalog').value = state.catalog.catalogId; show(error.message, 'error'); }
+      }), { id: 'catalog' }));
+    await activateCatalog(initialId);
   } catch (error) { show(error.message, 'error'); $('connection').textContent = 'Metadata unavailable'; }
 }
 start();
