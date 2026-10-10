@@ -42,8 +42,11 @@ jobs:
           node --check src/ExpressionForge.Api/wwwroot/graph-preview.js
       - name: Test editor parameter bindings
         run: node --test tests/ExpressionForge.Editor.Tests/*.test.cjs
+      - name: Prepare live Blueprint showcase
+        run: node scripts/prepare-blueprint-demo.cjs
       - name: Validate GitHub Pages website
         run: |
+          node --check site/blueprint-demo.js
           node --check site/app.js
           node --check site/example-gallery.js
           node --test tests/ExpressionForge.Site.Tests/*.test.cjs
