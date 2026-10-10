@@ -5,7 +5,7 @@ namespace ExpressionForge.Core;
 /// <summary>Registers trusted server-side entity mappings and validates the catalog before queries can use it.</summary>
 public sealed class QueryCatalogBuilder
 {
-    private static readonly HashSet<string> SupportedTypes = ["string", "integer", "decimal", "boolean"];
+    private static readonly HashSet<string> SupportedTypes = ["string", "integer", "decimal", "boolean", "date", "dateTime"];
     private static readonly Regex SqlIdentifier = new("^[A-Za-z_][A-Za-z0-9_]{0,127}$", RegexOptions.CultureInvariant);
     private readonly List<EntityMetadata> _entities = [];
     private readonly List<OperatorMetadata> _operators = [];
@@ -60,7 +60,9 @@ public sealed class QueryCatalogBuilder
                 if (string.IsNullOrWhiteSpace(property.DisplayName)) throw new InvalidOperationException($"Property '{entity.Id}.{property.Id}' requires a display name.");
                 if (!SupportedTypes.Contains(property.DataType))
                     throw new InvalidOperationException($"Property '{entity.Id}.{property.Id}' has unsupported type '{property.DataType}'.");
-                if (property.Operators is null || property.Operators.Count == 0 || property.Operators.Distinct(StringComparer.Ordinal).Count() != property.Operators.Count)
+                if (property.Operators is null ||
+                    (property.Operators.Count == 0 && property.DataType is not ("date" or "dateTime")) ||
+                    property.Operators.Distinct(StringComparer.Ordinal).Count() != property.Operators.Count)
                     throw new InvalidOperationException($"Property '{entity.Id}.{property.Id}' requires distinct operators.");
                 foreach (var operatorId in property.Operators)
                 {
