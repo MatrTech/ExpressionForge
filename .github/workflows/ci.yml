@@ -56,6 +56,26 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  sqlserver-integration:
+    name: SQL Server 2022 integration (Testcontainers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Test real SQL Server semantics
+        run: dotnet test tests/ExpressionForge.IntegrationTests/ExpressionForge.IntegrationTests.csproj -c Release --logger "trx;LogFileName=integration.trx" --results-directory TestResults
+      - name: Upload integration results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlserver-integration-${{ github.run_id }}
+          path: TestResults/*.trx
+          if-no-files-found: ignore
+          retention-days: 14
+
   application-artifact:
     name: Publish API artifact (main)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

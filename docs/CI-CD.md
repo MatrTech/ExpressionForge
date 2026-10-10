@@ -10,9 +10,10 @@ Runs for every pull request, pushes to `main`, and manual dispatch. The job:
 
 1. Restores and builds the .NET 10 solution in Release mode, treating warnings as errors.
 2. Runs MSTest and uploads TRX results, even if the tests fail.
-3. Checks the editor JavaScript syntax with Node.
-4. Packs the `ExpressionForge.Core` NuGet candidate and uploads it as a short-lived build artifact.
-5. On `main` only, publishes and uploads a framework-dependent ASP.NET Core API artifact.
+3. Separately runs SQL Server 2022 Testcontainers integration tests (Docker required), checking real null and collection semantics.
+4. Checks the editor JavaScript syntax and parameter-binding tests with Node.
+5. Packs the `ExpressionForge.Core` NuGet candidate and uploads it as a short-lived build artifact.
+6. On `main` only, publishes and uploads a framework-dependent ASP.NET Core API artifact.
 
 Artifacts are retained for 14 days. A CI artifact is **not** a published release.
 
@@ -25,7 +26,7 @@ The workflow runs when a stable version tag such as `v0.2.0` is pushed. It refus
 - The tag is exactly `vMAJOR.MINOR.PATCH`.
 - The tagged commit is reachable from `main`.
 - The tag matches `<Version>` in `Directory.Build.props`.
-- Restore, warnings-as-errors build, tests, editor syntax check, and NuGet pack all succeed.
+- Restore, warnings-as-errors build, unit tests, SQL Server integration tests, editor syntax/binding tests, and NuGet pack all succeed.
 
 Only then does the workflow create a GitHub Release with generated release notes, a `.nupkg` file, and a framework-dependent API `.tar.gz` archive.
 
@@ -56,4 +57,4 @@ The GitHub integration currently cannot modify repository rulesets or branch pro
 
 ## Future gates
 
-SQL Server Testcontainers integration tests, package vulnerability auditing, coverage reporting and NuGet.org trusted publishing are follow-up improvements. Do not claim those checks are enforced before they are implemented.
+Package vulnerability auditing, coverage reporting and NuGet.org trusted publishing are follow-up improvements. Do not claim those checks are enforced before they are implemented.
