@@ -45,7 +45,9 @@ Final correctness review is complete, including diagnostic ownership, cross-type
 
 **Increment 2 — catalog revisions and typed scopes:** A deterministic fingerprint detects changes in catalog mappings, data types and operators. Persisted AST v1 queries may pin an optional revision and receive structured rejection when it is stale. A typed-scope API resolves each nested expression's active entity, property types and allowed collections without runtime values or physical SQL mappings. See [catalog revisions and scopes](catalog-revisions-and-scopes.md).
 
-**Next increments:** Authorization-aware entity/field discovery; extensible metadata sources and frontend switching. Dynamic operator implementations, introspection and hot reload remain out of scope for this increment. Keep the [GitHub Pages example gallery](https://matrtech.github.io/ExpressionForge/#examples) updated with examples that are also exercised by .NET and SQL Server tests.
+**Increment 3 — authorization-aware discovery and enforcement:** Trusted role grants restrict entities, fields and relationships consistently across metadata discovery, nested scope resolution, semantic validation, SQL SELECT projections, bound execution and preview. Protected deployments use JWT bearer authentication; a real SQL Server 2022 test verifies returned columns. See [authorization and role grants](authorization.md).
+
+**Next increment:** Extensible metadata sources and frontend catalog switching. Dynamic operator implementations, introspection and hot reload remain out of scope for this milestone. Dynamic operator implementations, introspection and hot reload remain out of scope for this increment. Keep the [GitHub Pages example gallery](https://matrtech.github.io/ExpressionForge/#examples) updated with examples that are also exercised by .NET and SQL Server tests.
 
 ## Dependencies
 
