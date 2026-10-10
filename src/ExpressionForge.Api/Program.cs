@@ -2,7 +2,12 @@
 using ExpressionForge.Core;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddSingleton(QueryCatalog.CreateDemo());
+// Catalogs are trusted server-side configuration; clients can discover safe metadata but cannot supply SQL mappings.
+var catalogFile = builder.Configuration["ExpressionForge:CatalogFile"];
+var catalog = string.IsNullOrWhiteSpace(catalogFile)
+    ? QueryCatalog.CreateDemo()
+    : QueryCatalogFile.Load(Path.GetFullPath(catalogFile, builder.Environment.ContentRootPath));
+builder.Services.AddSingleton(catalog);
 builder.Services.AddSingleton<QueryValidator>();
 builder.Services.AddSingleton<SqlServerQueryCompiler>();
 builder.Services.AddSingleton<SqlServerQueryExecutor>();
