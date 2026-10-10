@@ -1,0 +1,16 @@
+{
+  "defaultCatalog": "customers",
+  "catalogs": [
+    {
+      "id": "customers",
+      "displayName": "Customers & Orders",
+      "source": "demo"
+    },
+    {
+      "id": "projects",
+      "displayName": "Projects & Tasks",
+      "source": "json",
+      "path": "project-catalog.json"
+    }
+  ]
+}

@@ -138,7 +138,7 @@
         <div class="section-head">
           <div><div class="section-kicker">03 / DYNAMIC METADATA — v0.3.0 IN DEVELOPMENT</div>
             <h2>Your schema. The same expression engine.</h2>
-            <p>Register Project and Task entities without changing the visual editor or the JSON query contract. Typed scopes follow nested collections, catalog revisions detect stale queries, and trusted role grants restrict both metadata and SQL output.</p>
+            <p>Register Project and Task entities without changing the visual editor or the JSON query contract. Typed scopes follow nested collections, catalog revisions detect stale queries, trusted role grants restrict SQL output, and multiple sources can coexist in one API.</p>
           </div>
           <span class="demo-badge">DEVELOPMENT PREVIEW</span>
         </div>
@@ -195,6 +195,30 @@
           </div>
           <a class="inline-link" href="https://github.com/MatrTech/ExpressionForge/blob/main/examples/project-access.json">Inspect server-side role grants ↗</a>
           <a class="inline-link" href="https://github.com/MatrTech/ExpressionForge/blob/main/docs/authorization.md">Read authorization and SQL safety design ↗</a>
+        </div>
+        <div class="metadata-access-card" aria-label="Multi-catalog metadata sources">
+          <div class="section-kicker">04 · MULTIPLE TRUSTED SOURCES</div>
+          <h3>Choose a domain, keep the same expression language.</h3>
+          <p>One ASP.NET Core API can register several independently mapped metadata catalogs. The visual editor switches schemas while retaining each catalog's draft expression and bound parameter values.</p>
+          <div class="metadata-access-grid">
+            <div class="metadata-access-role">
+              <span class="gallery-chip">catalog: customers · demo provider</span>
+              <strong>Customer &amp; Orders</strong>
+              <span>Customer.FirstName, Age, IsActive</span>
+              <span>Orders.ANY / ALL / NONE</span>
+              <small>Existing AST v1 payloads without catalogId continue using the configured default.</small>
+            </div>
+            <div class="metadata-access-role">
+              <span class="gallery-chip">catalog: projects · JSON provider</span>
+              <strong>Projects &amp; Tasks</strong>
+              <span>Project.Budget, Archived</span>
+              <span>Tasks.State, Hours</span>
+              <small>New queries can pin catalogId and catalogRevision to a trusted domain definition.</small>
+            </div>
+          </div>
+          <a class="inline-link" href="https://github.com/MatrTech/ExpressionForge/blob/main/examples/catalog-registry.json">Explore both registered sources ↗</a>
+          <a class="inline-link" href="https://github.com/MatrTech/ExpressionForge/blob/main/docs/catalog-registry.md">Read the catalog switching guide ↗</a>
+          <p class="demo-disclaimer">This GitHub Pages showcase is static. Catalog switching and compilation are available in the running .NET editor; authorization remains enforced by the API.</p>
         </div>
         <p class="demo-disclaimer"><strong>New:</strong> GET /api/query/metadata provides an opaque schema fingerprint, and POST /api/query/metadata/scopes discovers valid fields and types for every nested AST node. <a class="inline-link" href="https://github.com/MatrTech/ExpressionForge/blob/main/docs/catalog-revisions-and-scopes.md">Read the API design ↗</a></p>
         <p class="demo-disclaimer">Catalog mappings are trusted server configuration, not browser input. This website illustrates the validated fixtures; database execution is available only in the hosted .NET API with SQL Server configured.</p>

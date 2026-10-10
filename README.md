@@ -66,7 +66,8 @@ A `group` combines child predicates with `and`/`or`. An `expression` compares a 
 
 | Method | Endpoint | Function |
 |---|---|---|
-| GET | `/api/query/metadata` | Frontend-safe entity, property, relationship and operator metadata |
+| GET | `/api/query/catalogs` | List registered catalogs visible to the current user |
+| GET | `/api/query/metadata?catalog=projects` | Frontend-safe entity, property, relationship and operator metadata for a selected catalog |
 | GET | `/api/query/metadata/entities/{id}` | Metadata for one entity |
 | POST | `/api/query/metadata/scopes` | Resolve typed entity and field scopes throughout a nested AST |
 | POST | `/api/query/validate` | AST validation with JSON paths and error codes |
@@ -102,7 +103,7 @@ The first v0.3.0 increment supports registering a trusted, server-side entity ca
 
 Try the [Project/Task catalog](examples/project-catalog.json) and its [nested parameterized query](examples/project-query.json), or see the [metadata registration guide](docs/metadata-registration.md). The public [metadata showcase](https://matrtech.github.io/ExpressionForge/#metadata) illustrates the example.
 
-Set `ExpressionForge__CatalogFile` to the absolute path of your trusted JSON catalog file before starting the API. SQL tables must exist in the configured database. Custom operator implementations, hot reload and database introspection are not part of the current metadata milestone. The subsequent increments add catalog revision guards, typed nested scope discovery and optional JWT-authenticated role allowlists; see [catalog revision guide](docs/catalog-revisions-and-scopes.md) and [authorization guide](docs/authorization.md).
+Set `ExpressionForge__CatalogFile` to the absolute path of your trusted JSON catalog file before starting the API. SQL tables must exist in the configured database. Custom operator implementations, hot reload and database introspection are not part of the current metadata milestone. The subsequent increments add catalog revision guards, typed nested scope discovery, optional JWT-authenticated role allowlists, and a registry of interchangeable demo/JSON sources. See [catalog revisions](docs/catalog-revisions-and-scopes.md), [authorization](docs/authorization.md), and [multi-catalog setup](docs/catalog-registry.md). Configure `ExpressionForge__RegistryFile` to run the [Customer + Project registry](examples/catalog-registry.json) and use the editor's **Registered catalog** selector.
 
 ## Safety and current constraints
 
