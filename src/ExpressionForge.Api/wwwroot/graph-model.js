@@ -191,7 +191,7 @@
         expression.expression = inputs(graph, node.key, 'single')[0];
       else if (node.kind === 'collectionExpression')
         expression.expression = childGraph(node, 'single')[0];
-      else if (!['expression', 'fieldComparison'].includes(node.kind))
+      else if (!['expression', 'fieldComparison', 'arithmeticComparison'].includes(node.kind))
         throw new Error('Unsupported visual node type.');
       return expression;
     }
