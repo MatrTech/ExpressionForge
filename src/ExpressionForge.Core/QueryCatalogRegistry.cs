@@ -64,7 +64,7 @@ public sealed class QueryCatalogRegistry
                 catalog.Version, catalog.Revision, registration.Id == DefaultId);
         }).OfType<QueryCatalogSummary>().ToArray();
 
-    public static QueryCatalogRegistry Single(QueryCatalog catalog, QueryAccessCatalogs access) =>
+    public static QueryCatalogRegistry Single(QueryAccessCatalogs access) =>
         new QueryCatalogRegistryBuilder().Add("default", "Default catalog", access).Build("default");
 }
 
