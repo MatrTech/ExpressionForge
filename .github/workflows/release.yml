@@ -61,6 +61,10 @@ jobs:
           node --check src/ExpressionForge.Api/wwwroot/parameter-utils.js
       - name: Test editor parameter bindings
         run: node --test tests/ExpressionForge.Editor.Tests/*.test.cjs
+      - name: Test published website examples
+        run: |
+          node --check site/example-gallery.js
+          node --test tests/ExpressionForge.Site.Tests/*.test.cjs
       - name: Pack core library
         run: dotnet pack src/ExpressionForge.Core/ExpressionForge.Core.csproj -c Release --no-build -o artifacts/packages
       - name: Publish API

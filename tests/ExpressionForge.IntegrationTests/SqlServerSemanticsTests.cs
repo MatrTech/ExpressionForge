@@ -154,6 +154,26 @@ public sealed class SqlServerSemanticsTests
         await AssertIds(Compare("Id", "greaterThan", 0), "1,2,3,4,5");
     }
 
+    [TestMethod]
+    [DataRow("loyal-spenders", "1,3")]
+    [DataRow("quiet-accounts", "1,3")]
+    [DataRow("premium-only", "3")]
+    [DataRow("segmentation", "1,2,3")]
+    [DataRow("all-clear", "3")]
+    public async Task Execute_PublishedShowcaseExample_MatchesRealSqlServerRows(string exampleId, string expected)
+    {
+        var json = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "examples.json"), TestContext.CancellationToken);
+        using var document = JsonDocument.Parse(json);
+        var example = document.RootElement.EnumerateArray()
+            .Single(item => item.GetProperty("id").GetString() == exampleId);
+        var definition = JsonSerializer.Deserialize<QueryDefinition>(
+            example.GetProperty("definition").GetRawText(), ExpressionForgeJson.CreateOptions())!;
+        var bindings = example.GetProperty("parameters").EnumerateObject().ToDictionary(
+            item => item.Name, item => item.Value.GetProperty("value").Clone(), StringComparer.Ordinal);
+
+        await AssertIds(definition.Query, expected, bindings);
+    }
+
     private static ComparisonExpression Compare<T>(string field, string op, T value) => new()
     {
         Field = field, Operator = op, Value = JsonSerializer.SerializeToElement(value)

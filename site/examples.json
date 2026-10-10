@@ -1,0 +1,425 @@
+[
+  {
+    "id": "loyal-spenders",
+    "title": "Loyal high-value customers",
+    "description": "Active adults with at least one completed order above a configurable threshold.",
+    "concepts": [
+      "AND group",
+      "ANY collection",
+      "Typed parameters"
+    ],
+    "definition": {
+      "version": 1,
+      "entity": "Customer",
+      "query": {
+        "type": "group",
+        "id": "loyal_root",
+        "operator": "and",
+        "expressions": [
+          {
+            "type": "expression",
+            "id": "loyal_active",
+            "field": "IsActive",
+            "operator": "equals",
+            "value": true
+          },
+          {
+            "type": "expression",
+            "id": "loyal_age",
+            "field": "Age",
+            "operator": "greaterThanOrEqual",
+            "parameter": "minimumAge"
+          },
+          {
+            "type": "collectionExpression",
+            "id": "loyal_orders",
+            "collection": "Orders",
+            "quantifier": "any",
+            "expression": {
+              "type": "group",
+              "id": "loyal_order_group",
+              "operator": "and",
+              "expressions": [
+                {
+                  "type": "expression",
+                  "id": "loyal_total",
+                  "field": "Total",
+                  "operator": "greaterThanOrEqual",
+                  "parameter": "minimumTotal"
+                },
+                {
+                  "type": "expression",
+                  "id": "loyal_status",
+                  "field": "Status",
+                  "operator": "equals",
+                  "parameter": "desiredStatus"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "parameters": {
+      "minimumAge": {
+        "label": "Minimum age",
+        "type": "integer",
+        "value": 21
+      },
+      "minimumTotal": {
+        "label": "Minimum order total",
+        "type": "decimal",
+        "value": 150
+      },
+      "desiredStatus": {
+        "label": "Order status",
+        "type": "string",
+        "value": "Completed"
+      }
+    }
+  },
+  {
+    "id": "quiet-accounts",
+    "title": "Quiet accounts",
+    "description": "Adults with no cancelled orders, excluding names that start with a test prefix.",
+    "concepts": [
+      "NONE collection",
+      "NOT expression",
+      "String matching"
+    ],
+    "definition": {
+      "version": 1,
+      "entity": "Customer",
+      "query": {
+        "type": "group",
+        "id": "quiet_root",
+        "operator": "and",
+        "expressions": [
+          {
+            "type": "expression",
+            "id": "quiet_age",
+            "field": "Age",
+            "operator": "greaterThanOrEqual",
+            "parameter": "minimumAge"
+          },
+          {
+            "type": "collectionExpression",
+            "id": "quiet_none",
+            "collection": "Orders",
+            "quantifier": "none",
+            "expression": {
+              "type": "expression",
+              "id": "quiet_cancelled",
+              "field": "Status",
+              "operator": "equals",
+              "parameter": "excludedStatus"
+            }
+          },
+          {
+            "type": "not",
+            "id": "quiet_not",
+            "expression": {
+              "type": "expression",
+              "id": "quiet_prefix",
+              "field": "FirstName",
+              "operator": "startsWith",
+              "parameter": "ignoredPrefix"
+            }
+          }
+        ]
+      }
+    },
+    "parameters": {
+      "minimumAge": {
+        "label": "Minimum age",
+        "type": "integer",
+        "value": 18
+      },
+      "excludedStatus": {
+        "label": "Excluded order status",
+        "type": "string",
+        "value": "Cancelled"
+      },
+      "ignoredPrefix": {
+        "label": "Ignored name prefix",
+        "type": "string",
+        "value": "Test"
+      }
+    }
+  },
+  {
+    "id": "premium-only",
+    "title": "Consistently premium",
+    "description": "Every order meets a threshold, at least one order exists, and none have a null status.",
+    "concepts": [
+      "ALL + ANY",
+      "Empty-set safety",
+      "Reused parameter",
+      "NULL checks"
+    ],
+    "definition": {
+      "version": 1,
+      "entity": "Customer",
+      "query": {
+        "type": "group",
+        "id": "premium_root",
+        "operator": "and",
+        "expressions": [
+          {
+            "type": "collectionExpression",
+            "id": "premium_all",
+            "collection": "Orders",
+            "quantifier": "all",
+            "expression": {
+              "type": "expression",
+              "id": "premium_all_total",
+              "field": "Total",
+              "operator": "greaterThanOrEqual",
+              "parameter": "minimumTotal"
+            }
+          },
+          {
+            "type": "collectionExpression",
+            "id": "premium_any",
+            "collection": "Orders",
+            "quantifier": "any",
+            "expression": {
+              "type": "expression",
+              "id": "premium_any_total",
+              "field": "Total",
+              "operator": "greaterThanOrEqual",
+              "parameter": "minimumTotal"
+            }
+          },
+          {
+            "type": "collectionExpression",
+            "id": "premium_none",
+            "collection": "Orders",
+            "quantifier": "none",
+            "expression": {
+              "type": "expression",
+              "id": "premium_status",
+              "field": "Status",
+              "operator": "isNull"
+            }
+          }
+        ]
+      }
+    },
+    "parameters": {
+      "minimumTotal": {
+        "label": "Minimum total (shared)",
+        "type": "decimal",
+        "value": 200
+      }
+    }
+  },
+  {
+    "id": "segmentation",
+    "title": "Advanced segmentation",
+    "description": "Combine name or age matching with qualifying orders, while rejecting blocked or unknown statuses.",
+    "concepts": [
+      "Nested AND / OR",
+      "NOT + ANY",
+      "NULL-aware filtering"
+    ],
+    "definition": {
+      "version": 1,
+      "entity": "Customer",
+      "query": {
+        "type": "group",
+        "id": "segment_root",
+        "operator": "and",
+        "expressions": [
+          {
+            "type": "group",
+            "id": "segment_or",
+            "operator": "or",
+            "expressions": [
+              {
+                "type": "expression",
+                "id": "segment_name",
+                "field": "FirstName",
+                "operator": "startsWith",
+                "parameter": "namePrefix"
+              },
+              {
+                "type": "expression",
+                "id": "segment_age",
+                "field": "Age",
+                "operator": "greaterThanOrEqual",
+                "parameter": "minimumAge"
+              }
+            ]
+          },
+          {
+            "type": "collectionExpression",
+            "id": "segment_any",
+            "collection": "Orders",
+            "quantifier": "any",
+            "expression": {
+              "type": "group",
+              "id": "segment_order_or",
+              "operator": "or",
+              "expressions": [
+                {
+                  "type": "expression",
+                  "id": "segment_total",
+                  "field": "Total",
+                  "operator": "greaterThan",
+                  "parameter": "minimumTotal"
+                },
+                {
+                  "type": "expression",
+                  "id": "segment_pending",
+                  "field": "Status",
+                  "operator": "equals",
+                  "value": "Pending"
+                }
+              ]
+            }
+          },
+          {
+            "type": "not",
+            "id": "segment_not",
+            "expression": {
+              "type": "collectionExpression",
+              "id": "segment_blocked",
+              "collection": "Orders",
+              "quantifier": "any",
+              "expression": {
+                "type": "group",
+                "id": "segment_blocked_or",
+                "operator": "or",
+                "expressions": [
+                  {
+                    "type": "expression",
+                    "id": "segment_cancel",
+                    "field": "Status",
+                    "operator": "equals",
+                    "value": "Cancelled"
+                  },
+                  {
+                    "type": "expression",
+                    "id": "segment_null",
+                    "field": "Status",
+                    "operator": "isNull"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    "parameters": {
+      "namePrefix": {
+        "label": "Name starts with",
+        "type": "string",
+        "value": "Jo"
+      },
+      "minimumAge": {
+        "label": "Minimum age",
+        "type": "integer",
+        "value": 30
+      },
+      "minimumTotal": {
+        "label": "Order threshold",
+        "type": "decimal",
+        "value": 100
+      }
+    }
+  },
+  {
+    "id": "all-clear",
+    "title": "All-clear customers",
+    "description": "Exclude inactive or unnamed customers, require all orders to pass quality rules, and require a completed order.",
+    "concepts": [
+      "NOT (OR)",
+      "ALL (AND)",
+      "ANY collection"
+    ],
+    "definition": {
+      "version": 1,
+      "entity": "Customer",
+      "query": {
+        "type": "group",
+        "id": "clear_root",
+        "operator": "and",
+        "expressions": [
+          {
+            "type": "not",
+            "id": "clear_not",
+            "expression": {
+              "type": "group",
+              "id": "clear_excluded",
+              "operator": "or",
+              "expressions": [
+                {
+                  "type": "expression",
+                  "id": "clear_inactive",
+                  "field": "IsActive",
+                  "operator": "equals",
+                  "value": false
+                },
+                {
+                  "type": "expression",
+                  "id": "clear_unnamed",
+                  "field": "FirstName",
+                  "operator": "isNull"
+                }
+              ]
+            }
+          },
+          {
+            "type": "collectionExpression",
+            "id": "clear_all",
+            "collection": "Orders",
+            "quantifier": "all",
+            "expression": {
+              "type": "group",
+              "id": "clear_quality",
+              "operator": "and",
+              "expressions": [
+                {
+                  "type": "expression",
+                  "id": "clear_total",
+                  "field": "Total",
+                  "operator": "greaterThanOrEqual",
+                  "parameter": "minimumTotal"
+                },
+                {
+                  "type": "expression",
+                  "id": "clear_status",
+                  "field": "Status",
+                  "operator": "notEquals",
+                  "value": "Cancelled"
+                }
+              ]
+            }
+          },
+          {
+            "type": "collectionExpression",
+            "id": "clear_any",
+            "collection": "Orders",
+            "quantifier": "any",
+            "expression": {
+              "type": "expression",
+              "id": "clear_completed",
+              "field": "Status",
+              "operator": "equals",
+              "value": "Completed"
+            }
+          }
+        ]
+      }
+    },
+    "parameters": {
+      "minimumTotal": {
+        "label": "Minimum order total",
+        "type": "decimal",
+        "value": 50
+      }
+    }
+  }
+]
