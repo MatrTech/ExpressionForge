@@ -43,11 +43,13 @@ if (registry.IsRestricted)
 }
 
 // List only those catalogs for which the current caller has grants.
-var listing = app.MapGet("/api/query/catalogs", (HttpContext http) => Results.Ok(new
+var listing = app.MapGet("/api/query/catalogs", (HttpContext http) =>
 {
-    defaultCatalog = registry.DefaultId,
-    catalogs = registry.Discover(http.User)
-}));
+    var available = registry.Discover(http.User);
+    var selectedDefault = available.Any(catalog => catalog.Id == registry.DefaultId)
+        ? registry.DefaultId : available.FirstOrDefault()?.Id;
+    return Results.Ok(new { defaultCatalog = selectedDefault, catalogs = available });
+});
 if (registry.IsRestricted) listing.RequireAuthorization();
 
 var api = app.MapGroup("/api/query");
