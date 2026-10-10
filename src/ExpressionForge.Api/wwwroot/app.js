@@ -1,7 +1,7 @@
 'use strict';
 
 const $ = id => document.getElementById(id);
-const state = { catalog: null, definition: null };
+const state = { catalog: null, definition: null, parameters: {} };
 const sample = {
   version: 1,
   entity: 'Customer',
@@ -96,15 +96,49 @@ function createNode(expression, entityId, remove) {
         expression.field = value;
         const next = property(entityId, value);
         expression.operator = next.operators[0];
-        expression.value = defaultValue(next.dataType);
+        if (expression.parameter === undefined) expression.value = defaultValue(next.dataType);
         render();
       })));
       body.append(fieldRow('Operator', select(current.operators.map(id => {
         const op = state.catalog.operators.find(o => o.id === id);
         return { value: id, label: op?.displayName || id };
-      }), expression.operator, value => { expression.operator = value; render(); })));
-      if (!['isNull', 'isNotNull'].includes(expression.operator))
-        body.append(fieldRow('Value', fieldInput(current.dataType, expression.value, value => { expression.value = value; updateJson(); })));
+      }), expression.operator, value => {
+        expression.operator = value;
+        if (['isNull', 'isNotNull'].includes(value)) {
+          delete expression.parameter;
+          delete expression.value;
+        } else if (expression.parameter === undefined && expression.value === undefined) {
+          expression.value = defaultValue(current.dataType);
+        }
+        render();
+      })));
+      if (!['isNull', 'isNotNull'].includes(expression.operator)) {
+        const mode = expression.parameter === undefined ? 'literal' : 'parameter';
+        body.append(fieldRow('Value source', select([
+          { value: 'literal', label: 'Fixed value' },
+          { value: 'parameter', label: 'Runtime parameter' }
+        ], mode, value => {
+          if (value === 'parameter') {
+            delete expression.value;
+            expression.parameter = `parameter_${crypto.randomUUID().slice(0, 8)}`;
+          } else {
+            delete expression.parameter;
+            expression.value = defaultValue(current.dataType);
+          }
+          render();
+        })));
+        if (mode === 'literal')
+          body.append(fieldRow('Value', fieldInput(current.dataType, expression.value, value => { expression.value = value; updateJson(); })));
+        else {
+          const name = element('input', 'control');
+          name.type = 'text';
+          name.maxLength = 64;
+          name.placeholder = 'parameterName';
+          name.value = expression.parameter;
+          name.addEventListener('input', () => { expression.parameter = name.value; updateJson(); });
+          body.append(fieldRow('Parameter', name));
+        }
+      }
     }
     node.append(body);
   } else if (expression.type === 'group') {
@@ -173,6 +207,47 @@ function updateJson() {
   ensureNodeIds(state.definition.query);
   $('json').value = JSON.stringify(state.definition, null, 2);
   $('node-count').textContent = `${countNodes(state.definition.query)} nodes`;
+  renderParameters();
+}
+function renderParameters() {
+  const definitions = ExpressionForgeParameters.discover(state.definition, state.catalog);
+  const section = $('parameter-section');
+  const container = $('runtime-parameters');
+  section.hidden = definitions.length === 0;
+  container.replaceChildren();
+  for (const definition of definitions) {
+    const row = element('div', 'runtime-parameter');
+    const label = element('label', 'parameter-label', definition.name);
+    const detail = element('span', 'parameter-detail',
+      `${definition.dataType} · ${definition.references.join(', ')}`);
+    const input = element(definition.dataType === 'boolean' ? 'select' : 'input', 'control');
+    input.id = `binding-${definition.name}`;
+    label.htmlFor = input.id;
+    if (definition.dataType === 'boolean') {
+      for (const [value, title] of [['', 'Choose…'], ['true', 'True'], ['false', 'False']]) {
+        const option = element('option', '', title);
+        option.value = value;
+        input.append(option);
+      }
+    } else {
+      input.type = 'text';
+      input.placeholder = definition.dataType === 'string' ? 'Enter a value' : `Enter ${definition.dataType}`;
+      input.autocomplete = 'off';
+    }
+    input.value = state.parameters[definition.name] ?? '';
+    input.addEventListener('input', () => {
+      if (input.value === '' && definition.dataType !== 'string') delete state.parameters[definition.name];
+      else state.parameters[definition.name] = input.value;
+    });
+    if (definition.conflict || !definition.validName) {
+      const issue = element('span', 'parameter-error',
+        definition.conflict ? 'Conflicting field types for this name.' : 'Use 1–64 letters, digits, _ or -.');
+      row.append(label, detail, input, issue);
+    } else {
+      row.append(label, detail, input);
+    }
+    container.append(row);
+  }
 }
 function renderSchema() {
   const container = $('schema');
@@ -202,8 +277,14 @@ function render() {
 function show(message, type = '') { $('message').className = `message ${type}`; $('message').textContent = message; }
 async function request(endpoint) {
   const limit = Number($('limit').value) || 25;
-  const response = await fetch(`/api/query/${endpoint}?limit=${encodeURIComponent(limit)}`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state.definition)
+  const definitions = ExpressionForgeParameters.discover(state.definition, state.catalog);
+  const isBound = definitions.length > 0;
+  const payload = isBound
+    ? { definition: state.definition, parameters: ExpressionForgeParameters.buildBindings(definitions, state.parameters) }
+    : state.definition;
+  const route = isBound ? `${endpoint}/bound` : endpoint;
+  const response = await fetch(`/api/query/${route}?limit=${encodeURIComponent(limit)}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
   });
   const data = await response.json();
   if (!response.ok) throw new Error(JSON.stringify(data, null, 2));
@@ -231,14 +312,14 @@ async function perform(endpoint) {
 }
 async function start() {
   for (const endpoint of ['validate', 'compile', 'preview']) $(endpoint).addEventListener('click', () => perform(endpoint));
-  $('reset').addEventListener('click', () => { state.definition = structuredClone(sample); render(); show(''); });
+  $('reset').addEventListener('click', () => { state.definition = structuredClone(sample); state.parameters = {}; render(); show(''); });
   $('load-json').addEventListener('click', () => {
     try {
       const value = JSON.parse($('json').value);
       if (!value || !entity(value.entity) || !value.query || !['group', 'expression', 'collectionExpression', 'not'].includes(value.query.type))
         throw new Error('Select a registered entity and a supported expression root.');
       const previous = state.definition;
-      try { state.definition = value; render(); } catch (error) { state.definition = previous; render(); throw error; }
+      try { state.definition = value; state.parameters = {}; render(); } catch (error) { state.definition = previous; render(); throw error; }
       show('JSON loaded. Validate it before execution.', 'success');
     } catch (error) { show(`Invalid JSON: ${error.message}`, 'error'); }
   });
