@@ -97,7 +97,9 @@ test('edits to graph node payloads round-trip into semantic AST changes', () => 
 
 test('export rejects disconnected expressions instead of dropping them', () => {
   const projection = project(fixture, catalog);
-  projection.graphs[0].edges = projection.graphs[0].edges.filter(edge => edge.from !== 'id:project-budget');
+  const orphan = structuredClone(projection.graphs[0].nodes.find(node => node.key === 'id:project-budget'));
+  orphan.key = 'orphan';
+  projection.graphs[0].nodes.push(orphan);
   assert.throws(() => toDefinition(projection), /Unconnected nodes/);
 });
 
