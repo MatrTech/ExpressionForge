@@ -18,6 +18,7 @@ public sealed record QueryDefinition
 
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(ComparisonExpression), "expression")]
+[JsonDerivedType(typeof(FieldComparisonExpression), "fieldComparison")]
 [JsonDerivedType(typeof(GroupExpression), "group")]
 [JsonDerivedType(typeof(CollectionExpression), "collectionExpression")]
 [JsonDerivedType(typeof(NotExpression), "not")]
@@ -38,6 +39,15 @@ public sealed record ComparisonExpression : QueryExpression
     // References a named runtime binding supplied separately from the saved definition.
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Parameter { get; init; }
+}
+
+// Compares two metadata-approved properties within the same entity scope.
+// Unlike ComparisonExpression, this predicate has no literal or runtime binding.
+public sealed record FieldComparisonExpression : QueryExpression
+{
+    public required string LeftField { get; init; }
+    public required string Operator { get; init; }
+    public required string RightField { get; init; }
 }
 
 public sealed record GroupExpression : QueryExpression
