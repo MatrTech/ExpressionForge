@@ -30,6 +30,7 @@
     if (!value) return '?';
     if (value.type === 'numericField') return String(value.field);
     if (value.type === 'numericLiteral') return String(value.value);
+    if (value.type === 'numericParameter') return '@' + String(value.parameter);
     if (value.type === 'numericBinary')
       return '(' + numericText(value.left) + ' ' + value.operator + ' ' + numericText(value.right) + ')';
     return '?';
@@ -267,27 +268,32 @@
       if (selected.kind === 'arithmeticComparison' && meta) {
         const left = item.left;
         if (left?.type === 'numericBinary' && left.left?.type === 'numericField' &&
-          left.right?.type === 'numericLiteral' && item.right?.type === 'numericLiteral') {
+          ['numericLiteral', 'numericParameter'].includes(left.right?.type) &&
+          ['numericLiteral', 'numericParameter'].includes(item.right?.type)) {
           const numeric = meta.properties.filter(p => ['integer', 'decimal'].includes(p.dataType));
           control('Field', numeric.map(p => [p.id, p.displayName || p.id]), left.left.field,
             value => change('numericField', value));
-          control('Calculate', [['add', 'Add (+)'], ['subtract', 'Subtract (−)'], ['multiply', 'Multiply (×)']],
+          control('Calculate', [['add', 'Add (+)'], ['subtract', 'Subtract (−)'], ['multiply', 'Multiply (×)'], ['divide', 'Divide (÷)']],
             left.operator, value => change('numericOperator', value));
           control('Compare', ['equals','notEquals','greaterThan','greaterThanOrEqual','lessThan','lessThanOrEqual']
             .map(op => [op, op]), item.operator, value => change('numericComparator', value));
           function numericInput(label, value, kind) {
+            control(label + ' source', [['literal', 'Fixed value'], ['parameter', 'Runtime parameter']],
+              value.type === 'numericLiteral' ? 'literal' : 'parameter',
+              source => change(kind + 'Mode', source));
             const row = el('label', 'blueprint-inspector-field');
-            row.append(el('span', '', label));
+            row.append(el('span', '', value.type === 'numericLiteral' ? label : label + ' parameter name'));
             const input = el('input', 'control');
-            input.type = 'number';
-            input.step = 'any';
-            input.value = String(value);
-            input.addEventListener('change', () => change(kind, Number(input.value)));
+            input.type = value.type === 'numericLiteral' ? 'number' : 'text';
+            if (input.type === 'number') input.step = 'any';
+            input.value = String(value.type === 'numericLiteral' ? value.value : value.parameter);
+            input.addEventListener('change', () => change(value.type === 'numericLiteral' ? kind : kind + 'Parameter',
+              value.type === 'numericLiteral' ? Number(input.value) : input.value));
             row.append(input);
             inspector.append(row);
           }
-          numericInput('Operand', left.right.value, 'numericOperand');
-          numericInput('Threshold', item.right.value, 'numericThreshold');
+          numericInput('Operand', left.right, 'numericOperand');
+          numericInput('Threshold', item.right, 'numericThreshold');
         } else {
           inspector.append(el('p', 'blueprint-hint', 'This nested value expression can be edited in JSON mode.'));
         }
