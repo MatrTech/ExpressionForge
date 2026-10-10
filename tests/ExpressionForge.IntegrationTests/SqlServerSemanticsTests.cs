@@ -84,7 +84,7 @@ public sealed class SqlServerSemanticsTests
             await _database.DisposeAsync();
     }
 
-    [DataTestMethod]
+    [TestMethod]
     [DataRow("any", "1,3,4")]
     [DataRow("none", "2,5")]
     [DataRow("all", "3,4,5")]
