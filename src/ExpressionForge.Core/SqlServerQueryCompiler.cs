@@ -38,12 +38,56 @@ public sealed class SqlServerQueryCompiler(QueryCatalog catalog, QueryValidator 
     {
         ComparisonExpression comparison => BuildComparison(comparison, entity, alias, state),
         FieldComparisonExpression comparison => BuildFieldComparison(comparison, entity, alias),
+        ArithmeticComparisonExpression arithmetic => BuildArithmeticComparison(arithmetic, entity, alias, state),
         GroupExpression group => "(" + string.Join(group.Operator == "and" ? " AND " : " OR ",
             group.Expressions.Select(child => BuildPredicate(child, entity, alias, state))) + ")",
         CollectionExpression collection => BuildCollection(collection, entity, alias, state),
         NotExpression not => $"(NOT ({BuildPredicate(not.Expression, entity, alias, state)}))",
         _ => throw new NotSupportedException("Unexpected expression type.")
     };
+
+    private string BuildArithmeticComparison(ArithmeticComparisonExpression expression, EntityMetadata entity,
+        string alias, CompilationState state)
+    {
+        var left = BuildNumeric(expression.Left, entity, alias, state);
+        var right = BuildNumeric(expression.Right, entity, alias, state);
+        var op = expression.Operator switch
+        {
+            "equals" => "=", "notEquals" => "<>",
+            "greaterThan" => ">", "greaterThanOrEqual" => ">=",
+            "lessThan" => "<", "lessThanOrEqual" => "<=",
+            _ => throw new NotSupportedException("Unsupported numeric comparison.")
+        };
+        return $"({left} {op} {right})";
+    }
+
+    private string BuildNumeric(NumericValueExpression value, EntityMetadata entity, string alias, CompilationState state) =>
+        value switch
+        {
+            NumericFieldExpression field => $"CONVERT(decimal(28,6), [{alias}].{Quote(entity.Properties.Single(p => p.Id == field.Field).Id)})",
+            NumericLiteralExpression literal => BindNumeric(literal.Value.GetDecimal(), state),
+            NumericBinaryExpression binary => BuildNumericBinary(binary, entity, alias, state),
+            _ => throw new NotSupportedException("Unsupported numeric value expression.")
+        };
+
+    private string BuildNumericBinary(NumericBinaryExpression binary, EntityMetadata entity, string alias, CompilationState state)
+    {
+        var left = BuildNumeric(binary.Left, entity, alias, state);
+        var right = BuildNumeric(binary.Right, entity, alias, state);
+        var op = binary.Operator switch
+        {
+            "add" => "+", "subtract" => "-", "multiply" => "*",
+            _ => throw new NotSupportedException("Unsupported arithmetic operator.")
+        };
+        return $"({left} {op} {right})";
+    }
+
+    private static string BindNumeric(decimal value, CompilationState state)
+    {
+        var name = $"@p{state.Parameters.Count - 1}";
+        state.Parameters.Add(new(name, DbType.Decimal, value));
+        return $"CONVERT(decimal(28,6), {name})";
+    }
 
     private static string BuildFieldComparison(FieldComparisonExpression expression, EntityMetadata entity, string alias)
     {
