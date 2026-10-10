@@ -44,8 +44,8 @@ test('guided Add condition works, and Undo/Redo restore canonical JSON', async t
   const original = await definition(page);
   await page.locator('#guided-mode').click();
   const count = original.query.expressions.length;
-  await page.locator('.guided-condition-picker').first().selectOption({ index: 1 });
-  await page.locator('#graph .actions').first().getByRole('button', { name: /Add condition/ }).click();
+  await page.locator('.guided-condition-picker').last().selectOption({ index: 1 });
+  await page.locator('#graph .actions').last().getByRole('button', { name: /Add condition/ }).click();
   assert.equal((await definition(page)).query.expressions.length, count + 1);
   await page.locator('#undo-edit').click();
   assert.deepEqual((await definition(page)).query, original.query);
