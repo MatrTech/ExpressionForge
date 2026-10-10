@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify-and-release:
+    name: Verify version, test and publish GitHub release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate release tag and main ancestry
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "Only stable vMAJOR.MINOR.PATCH tags are released." >&2
+            exit 1
+          }
+          git fetch origin main
+          git merge-base --is-ancestor HEAD origin/main || {
+            echo "Release tag must point to a commit on main." >&2
+            exit 1
+          }
+          version=$(sed -n 's/.*<Version>\([^<]*\)<\/Version>.*/\1/p' Directory.Build.props | head -1)
+          [[ "v$version" == "$GITHUB_REF_NAME" ]] || {
+            echo "Tag $GITHUB_REF_NAME does not match Directory.Build.props version $version" >&2
+            exit 1
+          }
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore
+        run: dotnet restore ExpressionForge.slnx
+      - name: Build (warnings as errors)
+        run: dotnet build ExpressionForge.slnx -c Release --no-restore -warnaserror
+      - name: Test
+        run: dotnet test tests/ExpressionForge.Tests/ExpressionForge.Tests.csproj -c Release --no-build
+      - name: Validate editor JavaScript
+        run: node --check src/ExpressionForge.Api/wwwroot/app.js
+      - name: Pack core library
+        run: dotnet pack src/ExpressionForge.Core/ExpressionForge.Core.csproj -c Release --no-build -o artifacts/packages
+      - name: Publish API
+        run: dotnet publish src/ExpressionForge.Api/ExpressionForge.Api.csproj -c Release --no-restore -o artifacts/api
+      - name: Archive API
+        run: tar -czf "artifacts/ExpressionForge.Api.${GITHUB_REF_NAME}.tar.gz" -C artifacts/api .
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            artifacts/packages/*.nupkg \
+            "artifacts/ExpressionForge.Api.${GITHUB_REF_NAME}.tar.gz" \
+            --verify-tag --generate-notes --title "ExpressionForge $GITHUB_REF_NAME"

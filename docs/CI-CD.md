@@ -1,0 +1,59 @@
+# CI/CD and release management
+
+ExpressionForge uses GitHub Actions for pull-request validation, main-branch artifacts, and explicit version-tag releases.
+
+## Continuous integration
+
+Workflow: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
+
+Runs for every pull request, pushes to `main`, and manual dispatch. The job:
+
+1. Restores and builds the .NET 10 solution in Release mode, treating warnings as errors.
+2. Runs MSTest and uploads TRX results, even if the tests fail.
+3. Checks the editor JavaScript syntax with Node.
+4. Packs the `ExpressionForge.Core` NuGet candidate and uploads it as a short-lived build artifact.
+5. On `main` only, publishes and uploads a framework-dependent ASP.NET Core API artifact.
+
+Artifacts are retained for 14 days. A CI artifact is **not** a published release.
+
+## Release delivery
+
+Workflow: [`.github/workflows/release.yml`](../.github/workflows/release.yml)
+
+The workflow runs when a stable version tag such as `v0.2.0` is pushed. It refuses to release unless:
+
+- The tag is exactly `vMAJOR.MINOR.PATCH`.
+- The tagged commit is reachable from `main`.
+- The tag matches `<Version>` in `Directory.Build.props`.
+- Restore, warnings-as-errors build, tests, editor syntax check, and NuGet pack all succeed.
+
+Only then does the workflow create a GitHub Release with generated release notes, a `.nupkg` file, and a framework-dependent API `.tar.gz` archive.
+
+**NuGet.org publishing is intentionally not enabled.** No API key, trusted publisher or package ownership has been configured. A GitHub Release is not the same as publishing a package to NuGet.org.
+
+## Release checklist
+
+1. Complete and verify the milestone acceptance criteria, including required integration tests.
+2. Update `Directory.Build.props`, visible editor version, README, and release notes together.
+3. Open a pull request; wait for green CI and review; merge to `main`.
+4. Verify the `main` CI workflow has completed successfully.
+5. Create and push a version tag pointing at the verified `main` commit.
+6. Verify the release workflow and downloaded artifacts before announcing the version.
+
+Never create a version tag for unfinished milestones.
+
+## Recommended GitHub repository settings
+
+These settings require repository administration and are **not configured by these workflows**:
+
+- Protect `main` with a ruleset: require pull requests and the `build-test` status check.
+- Require branches to be up to date before merging; block force pushes and deletion.
+- Require review approval for external contributors.
+- Enable automatic deletion of merged feature branches if desired.
+- Set Actions workflow permissions to allow the release workflow's scoped `contents: write` permission.
+
+The GitHub integration currently cannot modify repository rulesets or branch protection. A repository administrator must apply those settings in GitHub.
+
+## Future gates
+
+SQL Server Testcontainers integration tests, package vulnerability auditing, coverage reporting and NuGet.org trusted publishing are follow-up improvements. Do not claim those checks are enforced before they are implemented.
