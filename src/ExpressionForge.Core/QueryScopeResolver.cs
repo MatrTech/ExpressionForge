@@ -70,6 +70,7 @@ public sealed class QueryScopeResolver(QueryCatalog catalog)
         {
             ComparisonExpression comparison => entity.Properties.FirstOrDefault(p => p.Id == comparison.Field)?.DataType,
             FieldComparisonExpression comparison => entity.Properties.FirstOrDefault(p => p.Id == comparison.LeftField)?.DataType,
+            ArithmeticComparisonExpression => "decimal",
             _ => null
         };
         scopes.Add(new(path, entity.Id, expression.Id, fieldType, entity.Properties, entity.Relationships));

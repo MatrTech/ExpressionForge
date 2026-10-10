@@ -26,6 +26,14 @@
     node.addEventListener('click', onclick);
     return node;
   }
+  function numericText(value) {
+    if (!value) return '?';
+    if (value.type === 'numericField') return String(value.field);
+    if (value.type === 'numericLiteral') return String(value.value);
+    if (value.type === 'numericBinary')
+      return '(' + numericText(value.left) + ' ' + value.operator + ' ' + numericText(value.right) + ')';
+    return '?';
+  }
   function description(node) {
     const data = node.data || {};
     if (node.kind === 'sink') return 'Query result';
@@ -34,6 +42,7 @@
     if (node.kind === 'collectionExpression')
       return String(data.collection || 'Collection') + '.' + String(data.quantifier || 'any').toUpperCase();
     if (node.kind === 'fieldComparison') return String(data.leftField) + ' ' + String(data.operator) + ' ' + String(data.rightField);
+    if (node.kind === 'arithmeticComparison') return numericText(data.left) + ' ' + data.operator + ' ' + numericText(data.right);
     if (node.kind === 'expression') {
       const value = data.parameter !== undefined ? '@' + data.parameter :
         data.value === undefined ? '' : JSON.stringify(data.value);
@@ -255,6 +264,34 @@
       if (selected.kind === 'collectionExpression')
         control('Quantifier', [['any', 'Any'], ['all', 'All'], ['none', 'None']],
           item.quantifier, value => change('quantifier', value));
+      if (selected.kind === 'arithmeticComparison' && meta) {
+        const left = item.left;
+        if (left?.type === 'numericBinary' && left.left?.type === 'numericField' &&
+          left.right?.type === 'numericLiteral' && item.right?.type === 'numericLiteral') {
+          const numeric = meta.properties.filter(p => ['integer', 'decimal'].includes(p.dataType));
+          control('Field', numeric.map(p => [p.id, p.displayName || p.id]), left.left.field,
+            value => change('numericField', value));
+          control('Calculate', [['add', 'Add (+)'], ['subtract', 'Subtract (−)'], ['multiply', 'Multiply (×)']],
+            left.operator, value => change('numericOperator', value));
+          control('Compare', ['equals','notEquals','greaterThan','greaterThanOrEqual','lessThan','lessThanOrEqual']
+            .map(op => [op, op]), item.operator, value => change('numericComparator', value));
+          function numericInput(label, value, kind) {
+            const row = el('label', 'blueprint-inspector-field');
+            row.append(el('span', '', label));
+            const input = el('input', 'control');
+            input.type = 'number';
+            input.step = 'any';
+            input.value = String(value);
+            input.addEventListener('change', () => change(kind, Number(input.value)));
+            row.append(input);
+            inspector.append(row);
+          }
+          numericInput('Operand', left.right.value, 'numericOperand');
+          numericInput('Threshold', item.right.value, 'numericThreshold');
+        } else {
+          inspector.append(el('p', 'blueprint-hint', 'This nested value expression can be edited in JSON mode.'));
+        }
+      }
       if (selected.kind === 'fieldComparison' && meta) {
         const left = meta.properties.find(property => property.id === item.leftField);
         const right = meta.properties.find(property => property.id === item.rightField);

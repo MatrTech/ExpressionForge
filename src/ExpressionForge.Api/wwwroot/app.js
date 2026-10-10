@@ -83,9 +83,9 @@ function header(node, title, remove) {
   return head;
 }
 function createNode(expression, entityId, remove, path = '$.query') {
-  const kind = expression.type === 'collectionExpression' ? 'collection' : ['expression', 'fieldComparison'].includes(expression.type) ? 'comparison' : expression.type;
+  const kind = expression.type === 'collectionExpression' ? 'collection' : ['expression', 'fieldComparison', 'arithmeticComparison'].includes(expression.type) ? 'comparison' : expression.type;
   const node = element('div', `node node-${kind}`);
-  const titles = { group: 'Logical group', comparison: expression.type === 'fieldComparison' ? 'Field comparison' : 'Comparison', collection: 'Collection predicate', not: 'Negation' };
+  const titles = { group: 'Logical group', comparison: expression.type === 'fieldComparison' ? 'Field comparison' : expression.type === 'arithmeticComparison' ? 'Calculation' : 'Comparison', collection: 'Collection predicate', not: 'Negation' };
   const head = header(node, titles[kind] || kind, remove);
   const body = element('div', 'node-body');
 
@@ -164,6 +164,37 @@ function createNode(expression, entityId, remove, path = '$.query') {
       label: state.catalog.operators.find(x => x.id === op)?.displayName || op })), expression.operator,
     value => applyGraphEdit(() => ExpressionForgeGraphEdit.change(state.definition, state.catalog, path,
       { kind: 'operator', value })))));
+    node.append(body);
+  } else if (expression.type === 'arithmeticComparison') {
+    const arithmetic = expression.left;
+    if (arithmetic?.type === 'numericBinary' && arithmetic.left?.type === 'numericField' &&
+      arithmetic.right?.type === 'numericLiteral' && expression.right?.type === 'numericLiteral') {
+      const numeric = entity(entityId).properties.filter(p => ['integer', 'decimal'].includes(p.dataType));
+      function modify(kind, value) {
+        applyGraphEdit(() => ExpressionForgeGraphEdit.change(state.definition, state.catalog, path, { kind, value }));
+      }
+      body.append(fieldRow('Field', select(numeric.map(p => ({ value: p.id, label: p.displayName })),
+        arithmetic.left.field, value => modify('numericField', value))));
+      body.append(fieldRow('Calculation', select([
+        { value: 'add', label: 'Add (+)' }, { value: 'subtract', label: 'Subtract (-)' },
+        { value: 'multiply', label: 'Multiply (×)' }
+      ], arithmetic.operator, value => modify('numericOperator', value))));
+      for (const [title, value, kind] of [
+        ['Operand', arithmetic.right.value, 'numericOperand'], ['Threshold', expression.right.value, 'numericThreshold']
+      ]) {
+        const input = element('input', 'control');
+        input.type = 'number';
+        input.step = 'any';
+        input.value = String(value);
+        input.addEventListener('change', () => modify(kind, Number(input.value)));
+        body.append(fieldRow(title, input));
+      }
+      body.append(fieldRow('Compare', select(
+        ['equals','notEquals','greaterThan','greaterThanOrEqual','lessThan','lessThanOrEqual']
+          .map(value => ({ value, label: value })), expression.operator, value => modify('numericComparator', value))));
+    } else {
+      body.append(element('p', 'empty', 'Advanced numeric AST — edit using JSON.'));
+    }
     node.append(body);
   } else if (expression.type === 'group') {
     head.insertBefore(select([{ value: 'and', label: 'AND' }, { value: 'or', label: 'OR' }], expression.operator, value => {
@@ -535,7 +566,7 @@ async function start() {
   $('load-json').addEventListener('click', async () => {
     try {
       const value = JSON.parse($('json').value);
-      if (!value || !value.query || !['group', 'expression', 'fieldComparison', 'collectionExpression', 'not'].includes(value.query.type))
+      if (!value || !value.query || !['group', 'expression', 'fieldComparison', 'arithmeticComparison', 'collectionExpression', 'not'].includes(value.query.type))
         throw new Error('Load a supported expression tree.');
       const requested = value.catalogId ?? state.catalog.catalogId;
       if (!state.catalogs.some(item => item.id === requested))

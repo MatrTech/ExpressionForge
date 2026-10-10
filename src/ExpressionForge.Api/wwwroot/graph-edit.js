@@ -70,6 +70,16 @@
       return { type: 'expression', field: meta.id, operator,
         ...(nullCheck(operator) ? {} : { value: defaultValue(meta.dataType) }) };
     }
+    if (spec.kind === 'arithmeticComparison') {
+      const numeric = entity(catalog, entityId).properties?.find(p =>
+        ['integer', 'decimal'].includes(p.dataType));
+      if (!numeric) throw Error('No numeric fields in this entity scope.');
+      return { type: 'arithmeticComparison',
+        left: { type: 'numericBinary', operator: 'subtract',
+          left: { type: 'numericField', field: numeric.id },
+          right: { type: 'numericLiteral', value: 0 } },
+        operator: 'greaterThan', right: { type: 'numericLiteral', value: 10 } };
+    }
     if (spec.kind === 'fieldComparison') {
       const [left, right] = fieldPair(catalog, entityId) || [];
       if (!left || !right) throw Error('No compatible field pair in this entity scope.');
@@ -96,6 +106,8 @@
     return [
       ...fields.map(p => ({ kind: 'expression', field: p.id, label: p.displayName || p.id })),
       ...(fieldPair(catalog, entityId) ? [{ kind: 'fieldComparison', label: 'Compare two fields' }] : []),
+      ...((meta.properties || []).some(p => ['integer', 'decimal'].includes(p.dataType)) ?
+        [{ kind: 'arithmeticComparison', label: 'Calculate with fields' }] : []),
       ...(meta.relationships || []).filter(r => entity(catalog, r.targetEntity)?.properties?.some(p => p.operators?.length))
         .map(r => ({ kind: 'collection', collection: r.id, label: (r.displayName || r.id) + ' · Any' })),
       ...(fields.length ? [{ kind: 'group', operator: 'and', label: 'AND group' },
@@ -124,6 +136,30 @@
     } else if (node.type === 'collectionExpression' && patch.kind === 'quantifier') {
       if (!['any', 'none', 'all'].includes(patch.value)) throw Error('Unsupported collection quantifier.');
       node.quantifier = patch.value;
+    } else if (node.type === 'arithmeticComparison') {
+      const left = node.left;
+      if (left?.type !== 'numericBinary' || left.left?.type !== 'numericField' ||
+        left.right?.type !== 'numericLiteral' || node.right?.type !== 'numericLiteral')
+        throw Error('Complex arithmetic trees are editable through the JSON AST.');
+      const numeric = ['integer', 'decimal'];
+      const validNumber = value => typeof value === 'number' && Number.isFinite(value) &&
+        Math.abs(value) <= 1e12 && Math.round(value * 1e6) / 1e6 === value;
+      if (patch.kind === 'numericField') {
+        if (!numeric.includes(field(catalog, entityId, patch.value)?.dataType))
+          throw Error('Arithmetic field must be numeric and visible in the current scope.');
+        left.left.field = patch.value;
+      } else if (patch.kind === 'numericOperator') {
+        if (!['add', 'subtract', 'multiply'].includes(patch.value)) throw Error('Unknown arithmetic operation.');
+        left.operator = patch.value;
+      } else if (patch.kind === 'numericComparator') {
+        if (!['equals', 'notEquals', 'greaterThan', 'greaterThanOrEqual', 'lessThan', 'lessThanOrEqual']
+          .includes(patch.value)) throw Error('Unsupported numeric comparison.');
+        node.operator = patch.value;
+      } else if (patch.kind === 'numericOperand' || patch.kind === 'numericThreshold') {
+        if (!validNumber(patch.value)) throw Error('Expected a numeric literal within ±1e12 and at most 6 decimals.');
+        if (patch.kind === 'numericOperand') left.right.value = patch.value;
+        else node.right.value = patch.value;
+      } else throw Error('Unsupported arithmetic change.');
     } else if (node.type === 'fieldComparison') {
       if (!['leftField', 'rightField', 'operator'].includes(patch.kind))
         throw Error('Unsupported field comparison change.');

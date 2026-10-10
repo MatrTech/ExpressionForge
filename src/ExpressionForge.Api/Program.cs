@@ -83,7 +83,7 @@ api.MapGet("/metadata", (HttpContext http) =>
         catalogRevision = current.Revision,
         entities = current.Entities,
         operators = current.Operators,
-        expressionTypes = new[] { "expression", "fieldComparison", "group", "collectionExpression", "not" },
+        expressionTypes = new[] { "expression", "fieldComparison", "arithmeticComparison", "group", "collectionExpression", "not" },
         quantifiers = new[] { "any", "all", "none" },
         limits = new { maxDepth = QueryValidator.MaximumDepth, maxNodes = QueryValidator.MaximumNodes, maxRows = SqlServerQueryCompiler.MaximumRows }
     });

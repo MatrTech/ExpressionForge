@@ -113,6 +113,9 @@ public sealed class QueryValidator(QueryCatalog catalog)
             case FieldComparisonExpression fieldComparison:
                 ValidateFieldComparison(fieldComparison, entity, path, issues);
                 break;
+            case ArithmeticComparisonExpression arithmetic:
+                NumericExpressionValidator.Validate(arithmetic, entity, path, depth, ref count, issues);
+                break;
             case GroupExpression group:
                 if (group.Operator is not ("and" or "or"))
                     issues.Add(new(path + ".operator", "invalidOperator", "Group operator must be 'and' or 'or'."));

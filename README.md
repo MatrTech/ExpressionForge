@@ -62,6 +62,24 @@ Do not check connection strings, passwords or SQL Server credentials into source
 
 An expanded example lives in [`examples/customer-query.json`](examples/customer-query.json). The [interactive advanced example gallery](https://matrtech.github.io/ExpressionForge/#examples) provides five complex ASTs with runtime bindings; the same fixtures are validated and executed in CI.
 
+**Typed arithmetic (v0.5 development):** The `arithmeticComparison` predicate compares nested numeric values. `numericField` references a metadata-approved integer/decimal property, `numericLiteral` is a parameterized number, and `numericBinary` combines two values using `add`, `subtract` or `multiply`.
+
+```json
+{
+  "type": "arithmeticComparison",
+  "left": {
+    "type": "numericBinary",
+    "operator": "subtract",
+    "left": { "type": "numericField", "field": "Age" },
+    "right": { "type": "numericField", "field": "Id" }
+  },
+  "operator": "greaterThan",
+  "right": { "type": "numericLiteral", "value": 20 }
+}
+```
+
+All numeric values use explicit SQL Server `decimal(28,6)` arithmetic semantics. Literal values are restricted to ±1e12 with at most six decimal places. Nested values count toward the global 16-level/256-node complexity budgets; column identifiers are resolved from trusted metadata. Division, runtime numeric-value parameters, arbitrary SQL, and automatic conversions remain out of scope.
+
 A `fieldComparison` compares two metadata-approved fields in the same entity scope without runtime values. Example: `{ "type": "fieldComparison", "leftField": "Id", "operator": "lessThan", "rightField": "Age" }`. Fields must have identical data types. Equality/inequality work for supported types; range comparisons are restricted to numeric fields. SQL Server NULL values use normal three-valued semantics.
 
 A `group` combines child predicates with `and`/`or`. An `expression` compares a catalog field to a typed JSON scalar. A `collectionExpression` evaluates an `any`/`none`/`all` predicate in the related entity's scope. A `not` negates a predicate. Query strings never contain SQL fragments.

@@ -75,7 +75,9 @@ Example:
 }
 ```
 
-This is the first slice of v0.5.0, **not a release**. Further increments will add typed arithmetic, string/date value functions, explicit conversions and a richer value-expression graph without replacing the existing AST.
+**Increment 2 — composable numeric arithmetic:** Added `arithmeticComparison` with nested `numericField`, `numericLiteral`, and `numericBinary` values. Comparisons support numeric equality and ordering; arithmetic supports `add`, `subtract`, `multiply`. Each numeric value uses `decimal(28,6)` SQL semantics and follows trusted catalog scoping. The backend restricts literal precision/range and enforces shared expression complexity limits. Guided and Blueprint editors offer a simple field-operation-operand-threshold form; advanced nested arithmetic works through JSON. Unit, browser and real SQL Server tests cover nested values and root/collection scopes.
+
+This is an incremental v0.5 development milestone, **not a package release**. Next: division policy (including zero), numeric runtime parameters, string/date functions, explicit conversions and richer value-value sockets.
 
 ## Dependencies
 

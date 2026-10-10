@@ -135,6 +135,26 @@ test('Blueprint adds and edits scoped field-to-field comparisons without changin
   assert.deepEqual((await definition(page)).query, original.query);
 });
 
+test('Blueprint creates an arithmetic predicate and edits its calculation without changing other conditions', async t => {
+  const page = await openShowcase(t);
+  const original = await definition(page);
+  await page.locator('.blueprint-palette-select').selectOption({ label: 'Calculate with fields' });
+  await page.locator('.blueprint-palette').getByRole('button', { name: /Add condition/ }).click();
+  let query = await definition(page);
+  const added = query.query.expressions.at(-1);
+  assert.equal(added.type, 'arithmeticComparison');
+  assert.equal(added.left.type, 'numericBinary');
+  const card = page.locator('.blueprint-card').filter({ hasText: /subtract/ }).last();
+  await card.locator('.blueprint-expand').click();
+  await page.locator('.blueprint-inline-inspector').getByRole('combobox').filter({ has: page.locator('option[value="multiply"]') })
+    .selectOption('multiply');
+  query = await definition(page);
+  assert.equal(query.query.expressions.at(-1).left.operator, 'multiply');
+  await page.locator('#undo-edit').click();
+  await page.locator('#undo-edit').click();
+  assert.deepEqual((await definition(page)).query, original.query);
+});
+
 test('mobile viewport and keyboard node move remain operable', async t => {
   const page = await openShowcase(t, { width: 390, height: 844 });
   const before = await definition(page);
