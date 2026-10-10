@@ -6,11 +6,12 @@
   <title>ExpressionForge — Query Designer</title>
   <link rel="stylesheet" href="/styles.css">
   <script src="/parameter-utils.js" defer></script>
+  <script src="/catalog-utils.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><span class="brand-icon">◇</span><span>Expression<span class="accent">Forge</span></span><span class="version">v0.1.0</span></div>
+    <div class="brand"><span class="brand-icon">◇</span><span>Expression<span class="accent">Forge</span></span><span class="version">v0.2.0</span></div>
     <div class="top-actions">
       <span id="connection" class="connection">Loading catalog…</span>
       <button id="validate" class="button secondary">Validate</button>
@@ -20,6 +21,8 @@
   <main class="layout">
     <aside class="sidebar">
       <div class="eyebrow">SCHEMA EXPLORER</div>
+      <label class="field-label" for="catalog">Registered catalog</label>
+      <select id="catalog" class="control" aria-label="Registered metadata catalog"></select>
       <label class="field-label" for="entity">Query source</label>
       <select id="entity" class="control"></select>
       <div id="schema" class="schema"></div>
