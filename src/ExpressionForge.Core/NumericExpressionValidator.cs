@@ -107,8 +107,9 @@ internal static class NumericExpressionValidator
                     issues.Add(new(path + ".endField", "unknownField", "Unknown or inaccessible end date.", owner));
                 else if (end.DataType is not ("date" or "dateTime"))
                     issues.Add(new(path + ".endField", "invalidValueType", "End date must be date/dateTime.", owner));
-                if (start?.DataType is "date" or "dateTime" &&
-                    end?.DataType is "date" or "dateTime" && start.DataType != end.DataType)
+                if (start is not null && end is not null &&
+                    (start.DataType is "date" or "dateTime") && (end.DataType is "date" or "dateTime") &&
+                    start.DataType != end.DataType)
                     issues.Add(new(path + ".endField", "incompatibleFieldTypes",
                         "Both date difference operands must use the same date/dateTime type.", owner));
                 break;
