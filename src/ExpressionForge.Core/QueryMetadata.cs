@@ -65,7 +65,13 @@ public sealed class QueryCatalog
             ],
             [], "dbo", "Orders")
         };
-        var operators = new List<OperatorMetadata>
+        var builder = new QueryCatalogBuilder();
+        foreach (var entity in entities) builder.AddEntity(entity);
+        foreach (var op in StandardOperators) builder.AddOperator(op);
+        return builder.Build();
+    }
+
+    public static IReadOnlyList<OperatorMetadata> StandardOperators { get; } = Array.AsReadOnly(new OperatorMetadata[]
         {
             new("equals", "Equals", ["string", "integer", "decimal", "boolean"], true),
             new("notEquals", "Not equals", ["string", "integer", "decimal", "boolean"], true),
@@ -78,7 +84,6 @@ public sealed class QueryCatalog
             new("lessThanOrEqual", "Less than or equal", ["integer", "decimal"], true),
             new("isNull", "Is null", ["string", "integer", "decimal", "boolean"], false),
             new("isNotNull", "Is not null", ["string", "integer", "decimal", "boolean"], false)
-        };
-        return new QueryCatalog(entities, operators);
-    }
+    });
+
 }
