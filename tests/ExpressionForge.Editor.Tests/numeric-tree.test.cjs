@@ -105,7 +105,7 @@ test('date difference value kind requires a compatible date field pair in a nest
 
 test('numeric trees are limited by the complexity budget', () => {
   let source = appended();
-  for (let i = 0; i < 13; i++) {
+  for (let i = 0; i < 14; i++) {
     source = edit.editValue(source, catalog, nodePath, 'left',
       { kind: 'wrap', operator: 'add' });
   }
