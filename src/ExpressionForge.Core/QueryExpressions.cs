@@ -26,7 +26,12 @@ public sealed record ComparisonExpression : QueryExpression
 {
     public required string Field { get; init; }
     public required string Operator { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public JsonElement Value { get; init; }
+
+    // References a named runtime binding supplied separately from the saved definition.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Parameter { get; init; }
 }
 
 public sealed record GroupExpression : QueryExpression
