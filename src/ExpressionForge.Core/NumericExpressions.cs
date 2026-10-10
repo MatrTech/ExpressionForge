@@ -7,6 +7,7 @@ namespace ExpressionForge.Core;
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(NumericFieldExpression), "numericField")]
 [JsonDerivedType(typeof(NumericLiteralExpression), "numericLiteral")]
+[JsonDerivedType(typeof(NumericParameterExpression), "numericParameter")]
 [JsonDerivedType(typeof(NumericBinaryExpression), "numericBinary")]
 public abstract record NumericValueExpression;
 
@@ -18,6 +19,12 @@ public sealed record NumericFieldExpression : NumericValueExpression
 public sealed record NumericLiteralExpression : NumericValueExpression
 {
     public JsonElement Value { get; init; }
+}
+
+/// <summary>Named decimal runtime binding supplied separately from the saved query definition.</summary>
+public sealed record NumericParameterExpression : NumericValueExpression
+{
+    public required string Parameter { get; init; }
 }
 
 public sealed record NumericBinaryExpression : NumericValueExpression
