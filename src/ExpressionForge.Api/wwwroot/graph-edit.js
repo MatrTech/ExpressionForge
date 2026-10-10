@@ -339,11 +339,20 @@
       expressions: [ref.node, additional] });
     return verify(next, catalog);
   }
+  function editValue(definition, catalog, predicatePath, valuePath, action) {
+    const next = clone(definition);
+    const ref = locate(next, catalog, predicatePath);
+    const api = typeof module === 'object' && module.exports
+      ? require('./numeric-tree.js') : globalThis.ExpressionForgeNumericTree;
+    if (!api) throw Error('Typed numeric value editor is not loaded.');
+    api.change(ref.node, catalog, ref.entityId, valuePath, action);
+    return verify(next, catalog);
+  }
   function canReconnect(definition, catalog, sourcePath, targetPath) {
     try {
       reconnect(definition, catalog, sourcePath, targetPath);
       return { valid: true, reason: null };
     } catch (error) { return { valid: false, reason: error.message }; }
   }
-  return { locate, makePredicate, options, append, change, reconnect, remove, insert, canReconnect, canRemove };
+  return { locate, makePredicate, options, append, change, editValue, reconnect, remove, insert, canReconnect, canRemove };
 });
