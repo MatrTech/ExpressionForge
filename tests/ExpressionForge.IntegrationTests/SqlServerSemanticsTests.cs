@@ -219,7 +219,7 @@ public sealed class SqlServerSemanticsTests
         } : e).ToArray();
         var builder = new QueryCatalogBuilder();
         foreach (var entity in entities) builder.AddEntity(entity);
-        foreach (var op in baseCatalog.Operators) builder.AddOperator(op);
+        foreach (var registeredOperator in baseCatalog.Operators) builder.AddOperator(registeredOperator);
         var catalog = builder.Build();
         await AssertIds(new ArithmeticComparisonExpression
         {
