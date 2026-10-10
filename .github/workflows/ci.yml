@@ -37,6 +37,10 @@ jobs:
           node --check src/ExpressionForge.Api/wwwroot/parameter-utils.js
       - name: Test editor parameter bindings
         run: node --test tests/ExpressionForge.Editor.Tests/*.test.cjs
+      - name: Validate GitHub Pages website
+        run: |
+          node --check site/app.js
+          node --test tests/ExpressionForge.Site.Tests/*.test.cjs
       - name: Pack core library
         run: dotnet pack src/ExpressionForge.Core/ExpressionForge.Core.csproj -c Release --no-build -o artifacts/packages
       - name: Upload test results
