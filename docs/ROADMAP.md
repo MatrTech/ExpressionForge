@@ -77,7 +77,9 @@ Example:
 
 **Increment 2 — composable numeric arithmetic:** Added `arithmeticComparison` with nested `numericField`, `numericLiteral`, and `numericBinary` values. Comparisons support numeric equality and ordering; arithmetic supports `add`, `subtract`, `multiply`. Each numeric value uses `decimal(28,6)` SQL semantics and follows trusted catalog scoping. The backend restricts literal precision/range and enforces shared expression complexity limits. Guided and Blueprint editors offer a simple field-operation-operand-threshold form; advanced nested arithmetic works through JSON. Unit, browser and real SQL Server tests cover nested values and root/collection scopes.
 
-This is an incremental v0.5 development milestone, **not a package release**. Next: division policy (including zero), numeric runtime parameters, string/date functions, explicit conversions and richer value-value sockets.
+**Increment 3 — safe division and runtime numeric parameters:** `numericBinary.operator=divide` compiles the denominator using SQL Server `NULLIF(..., 0)`, so division by zero yields `NULL`, never a divide-by-zero exception. As with other SQL three-valued comparisons, UNKNOWN does not select a row. `numericParameter` references a separately supplied, named decimal binding; the numeric value is strictly validated (±1e12, up to six decimal places), and names participate in shared parameter-type conflict checks. The Guided and Blueprint calculation controls can switch the operand and threshold between literal and runtime parameter, and the existing bindings panel discovers nested parameters in collection scopes. Unit, editor, browser and real SQL Server 2022 coverage include literal and runtime zero divisors and incompatible bindings.
+
+This is a development increment, **not a package release**. Next: typed string/date functions, explicit conversions, composable visual value sockets, and review of SQL numeric-overflow policies.
 
 ## Dependencies
 
