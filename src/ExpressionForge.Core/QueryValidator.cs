@@ -2,7 +2,7 @@
 
 namespace ExpressionForge.Core;
 
-public sealed record QueryIssue(string Path, string Code, string Message);
+public sealed record QueryIssue(string Path, string Code, string Message, string? NodeId = null);
 
 public sealed record QueryValidationResult(IReadOnlyList<QueryIssue> Issues)
 {
@@ -35,12 +35,27 @@ public sealed class QueryValidator(QueryCatalog catalog)
         if (entity is not null && definition.Query is not null)
         {
             var count = 0;
-            Visit(definition.Query, entity, "$.query", 1, ref count, issues);
+            var identifiers = new HashSet<string>(StringComparer.Ordinal);
+            Visit(definition.Query, entity, "$.query", 1, ref count, identifiers, issues);
         }
         return new(issues);
     }
 
-    private void Visit(QueryExpression expression, EntityMetadata entity, string path, int depth, ref int count, List<QueryIssue> issues)
+    private void Visit(QueryExpression expression, EntityMetadata entity, string path, int depth, ref int count,
+        HashSet<string> identifiers, List<QueryIssue> issues)
+    {
+        var issueStart = issues.Count;
+        VisitCore(expression, entity, path, depth, ref count, identifiers, issues);
+        // The deepest node assigns its identity first, so parent nodes only claim their own diagnostics.
+        for (var i = issueStart; i < issues.Count; i++)
+        {
+            if (issues[i].NodeId is null && expression.Id is not null)
+                issues[i] = issues[i] with { NodeId = expression.Id };
+        }
+    }
+
+    private void VisitCore(QueryExpression expression, EntityMetadata entity, string path, int depth, ref int count,
+        HashSet<string> identifiers, List<QueryIssue> issues)
     {
         count++;
         if (count > MaximumNodes)
@@ -53,6 +68,14 @@ public sealed class QueryValidator(QueryCatalog catalog)
         {
             issues.Add(new(path, "tooDeep", $"Expression nesting cannot exceed {MaximumDepth} levels."));
             return;
+        }
+
+        if (expression.Id is not null)
+        {
+            if (expression.Id.Length is < 1 or > 64 || !expression.Id.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_'))
+                issues.Add(new(path + ".id", "invalidNodeId", "Node IDs must be 1-64 ASCII letters, digits, '-' or '_'."));
+            else if (!identifiers.Add(expression.Id))
+                issues.Add(new(path + ".id", "duplicateNodeId", $"Duplicate node ID '{expression.Id}'."));
         }
 
         switch (expression)
@@ -73,7 +96,7 @@ public sealed class QueryValidator(QueryCatalog catalog)
                     if (group.Expressions[i] is null)
                         issues.Add(new($"{path}.expressions[{i}]", "required", "An expression cannot be null."));
                     else
-                        Visit(group.Expressions[i], entity, $"{path}.expressions[{i}]", depth + 1, ref count, issues);
+                        Visit(group.Expressions[i], entity, $"{path}.expressions[{i}]", depth + 1, ref count, identifiers, issues);
                 }
                 break;
             case CollectionExpression collection:
@@ -91,13 +114,13 @@ public sealed class QueryValidator(QueryCatalog catalog)
                 if (collection.Expression is null)
                     issues.Add(new(path + ".expression", "required", "A collection predicate is required."));
                 if (target is not null && collection.Expression is not null)
-                    Visit(collection.Expression, target, path + ".expression", depth + 1, ref count, issues);
+                    Visit(collection.Expression, target, path + ".expression", depth + 1, ref count, identifiers, issues);
                 break;
             case NotExpression not:
                 if (not.Expression is null)
                     issues.Add(new(path + ".expression", "required", "A negated expression is required."));
                 else
-                    Visit(not.Expression, entity, path + ".expression", depth + 1, ref count, issues);
+                    Visit(not.Expression, entity, path + ".expression", depth + 1, ref count, identifiers, issues);
                 break;
             default:
                 issues.Add(new(path, "unknownExpression", "Unsupported expression type."));
