@@ -6,6 +6,9 @@ namespace ExpressionForge.Core;
 public sealed record QueryDefinition
 {
     public int Version { get; init; } = 1;
+    // Selects a trusted catalog registered on the server. Absent means the default catalog (AST v1 compatible).
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? CatalogId { get; init; }
     // Optional catalog revision guard. Missing values preserve the original AST v1 contract.
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? CatalogRevision { get; init; }
