@@ -101,3 +101,7 @@ button.blueprint-card:hover,button.blueprint-card:focus-visible{outline:2px soli
 .blueprint-inspector-field{display:flex;flex-direction:column;gap:6px;color:#a6b9d5;font-size:11px;min-width:160px;flex:1}
 .blueprint-inspector-field .control{font-size:12px}
 @media(max-width:700px){.blueprint-toolbar{gap:10px}.blueprint-palette{width:100%}.blueprint-palette .control{width:min(220px,64vw)}}
+
+/* Keep socket hit targets outside the node's visual border, and dim non-movable outputs. */
+.blueprint-scene .blueprint-card{overflow:visible}
+.blueprint-scene .blueprint-socket-output:disabled{opacity:.45;cursor:not-allowed}
