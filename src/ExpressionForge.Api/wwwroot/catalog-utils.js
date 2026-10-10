@@ -10,7 +10,9 @@
     const entities = metadata.entities || [];
     if (!entities.length) throw new Error("This catalog does not expose a queryable entity.");
     const customer = entities.find(e => e.id === "Customer" &&
-      e.properties.some(p => p.id === "FirstName") && e.relationships.some(r => r.id === "Orders"));
+      ["FirstName", "Age", "IsActive"].every(id => e.properties.some(p => p.id === id)) &&
+      e.relationships.some(r => r.id === "Orders" && entities.some(child => child.id === r.targetEntity &&
+        child.properties.some(p => p.id === "Total"))));
     let definition;
     if (customer && demo) definition = JSON.parse(JSON.stringify(demo));
     else {
