@@ -6,7 +6,7 @@
 
 ExpressionForge is a .NET 10 metadata-driven expression engine with a Blueprint-inspired web editor. Users compose nested predicates using blocks. The frontend discovers fields, relationships and operators from the backend, then sends a provider-independent JSON expression tree (AST) for validation and SQL Server compilation.
 
-> **Version 0.1.0 — foundational preview.** The editor is a connected recursive block tree, not yet a freely movable node canvas. Filtering, correlated collection predicates, metadata, and parameterized SQL Server compilation work. Projections, aggregation, joins, reusable subgraphs and other database providers are planned, not implemented.
+> **Version 0.2.0 — expression correctness preview.** The editor supports nested expression trees, stable node IDs, typed runtime bindings and parameterized SQL Server compilation. Real SQL Server integration tests cover collection and NULL semantics. A freely movable Blueprint canvas, dynamic metadata, projections and other providers are future milestones.
 
 ## Try it
 
@@ -56,7 +56,7 @@ Do not check connection strings, passwords or SQL Server credentials into source
 }
 ```
 
-An expanded example lives in [`examples/customer-query.json`](examples/customer-query.json).
+An expanded example lives in [`examples/customer-query.json`](examples/customer-query.json). The [interactive advanced example gallery](https://matrtech.github.io/ExpressionForge/#examples) provides five complex ASTs with runtime bindings; the same fixtures are validated and executed in CI.
 
 A `group` combines child predicates with `and`/`or`. An `expression` compares a catalog field to a typed JSON scalar. A `collectionExpression` evaluates an `any`/`none`/`all` predicate in the related entity's scope. A `not` negates a predicate. Query strings never contain SQL fragments.
 
@@ -72,8 +72,11 @@ A `group` combines child predicates with `and`/`or`. An `expression` compares a 
 | POST | `/api/query/describe` | Output schema (root columns for v0.1.0) |
 | POST | `/api/query/compile?limit=25` | SQL text, typed parameters and output schema |
 | POST | `/api/query/preview?limit=25` | Execute a bounded SQL Server query and return rows |
+| POST | `/api/query/validate/bound` | Validate `{ "definition": ..., "parameters": {...} }` |
+| POST | `/api/query/compile/bound?limit=25` | Compile a query with typed runtime bindings |
+| POST | `/api/query/preview/bound?limit=25` | Execute a query with typed runtime bindings |
 
-All POST endpoints accept the **same JSON query definition** as the request body. Invalid ASTs yield errors; compilation and execution return `422` for semantic errors. Data preview returns `503` when no SQL connection is configured. Database execution failures are returned as generic server errors to avoid leaking provider details.
+Unbound POST endpoints accept a JSON query definition. Bound endpoints accept an object with separate `definition` and `parameters` members; they preserve the saved AST. Invalid ASTs yield errors; compilation and execution return `422` for semantic errors. Data preview returns `503` when no SQL connection is configured. Database execution failures are returned as generic server errors to avoid leaking provider details.
 
 Example:
 
@@ -87,7 +90,8 @@ curl -s -X POST 'http://localhost:5054/api/query/compile?limit=10' \
 
 - `ExpressionForge.Core` — JSON AST, catalog metadata, strict validation, parameterized SQL Server query compilation.
 - `ExpressionForge.Api` — ASP.NET Core host, metadata/validation/compile/preview routes, static UI, optional SqlClient execution.
-- `ExpressionForge.Tests` — MSTest coverage for recursive serialization, scope/type validation, quantifiers, parameterization and limits.
+- `ExpressionForge.Tests` — MSTest coverage for serialization, diagnostics, scopes, parameters and limits.
+- `ExpressionForge.IntegrationTests` — SQL Server 2022 Testcontainers coverage for real query semantics, including the public example gallery.
 
 The core package has **no external NuGet dependencies**.
 
@@ -101,15 +105,30 @@ Frontend metadata is presentation information, not an authorization boundary. Th
 
 ## Next milestones
 
-1. A proper pan/zoom/free-form graph canvas (React Flow or Rete.js) with typed sockets and AST serialization.
-2. Registered metadata providers instead of the built-in sample catalog, and user-specific authorization.
-3. Value-expression ASTs, query operations (`select`, `sort`, `groupBy`, `aggregate`) and derived schema inference.
-4. Logical query plan (IR), optimizer, provider adapters, parameter references, persisted definitions and version migrations.
+1. **v0.3.0:** Dynamic metadata providers, typed scope resolution, catalog versioning and authorization-aware discovery.
+2. **v0.4.0:** A pan/zoom/free-form Blueprint canvas with typed sockets and AST round-trip.
+3. **v0.5–0.6:** Value expressions, projections, sorting, grouping and aggregation.
+4. **v0.7–1.0:** Provider-neutral query planning, persistence, additional providers and production hardening.
 
 MIT licensed. See [LICENSE](LICENSE).
 
-## v0.2.0 development (in progress)
+## v0.2.0 correctness and runtime bindings
 
-The first correctness increment introduces optional stable expression node IDs (`id`). The editor assigns IDs when it serializes a tree; imported legacy JSON without IDs remains valid. The backend validates IDs for uniqueness and format and returns `nodeId` on validation issues when an ID is present. Node IDs are **editor identity only** and do not affect SQL semantics.
+Expression nodes can carry optional stable `id` values. Validation reports the correct `nodeId` for each issue, including nested expressions; imported JSON without IDs remains valid.
 
-Development takes place on `feature/v0.2.0-correctness` until the milestone's acceptance criteria are met. The package remains version `0.1.0` during development. See [roadmap](docs/ROADMAP.md).
+Comparison expressions can reference a named runtime binding with `"parameter": "minimumAge"` instead of a literal `value`. Bound endpoints receive a separate JSON object:
+
+```json
+{
+  "definition": {
+    "version": 1,
+    "entity": "Customer",
+    "query": { "type": "expression", "field": "Age", "operator": "greaterThan", "parameter": "minimumAge" }
+  },
+  "parameters": { "minimumAge": 21 }
+}
+```
+
+A runtime parameter must be present, correctly typed, and used consistently with the same field type. NULL checks do not accept values or runtime bindings. The editor keeps runtime values separate from saved query definitions.
+
+See [the v0.2.0 release notes](docs/releases/v0.2.0.md), [CI/CD](docs/CI-CD.md), and the [roadmap](docs/ROADMAP.md).
