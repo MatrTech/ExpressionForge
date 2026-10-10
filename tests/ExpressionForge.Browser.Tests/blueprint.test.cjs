@@ -73,6 +73,26 @@ test('Blueprint supports mouse dragging, separate Task subgraphs and stable AST 
   assert.match(await page.locator('.blueprint-scope').textContent(), /Predicate<Project>/);
 });
 
+test('dragging a predicate output to a compatible group input changes AST order and is undoable', async t => {
+  const page = await openShowcase(t);
+  const original = await definition(page);
+  const source = page.locator('.blueprint-card').filter({ hasText: 'Budget' })
+    .locator('.blueprint-socket-output').first();
+  const target = page.locator('.blueprint-group').locator('.blueprint-socket-input').first();
+  const from = await source.boundingBox();
+  const to = await target.boundingBox();
+  assert.ok(from && to, 'Expected visible typed sockets');
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 14 });
+  await page.mouse.up();
+  const changed = await definition(page);
+  assert.deepEqual(changed.query.expressions.map(x => x.id),
+    ['project-active', 'project-tasks', 'project-budget']);
+  await page.locator('#undo-edit').click();
+  assert.deepEqual((await definition(page)).query, original.query);
+});
+
 test('inserting on a wire preserves the original subtree and supports undo', async t => {
   const page = await openShowcase(t);
   const original = await definition(page);
