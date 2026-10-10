@@ -9,7 +9,7 @@ fs.mkdirSync(target, { recursive: true });
 
 const sharedAssets = [
   'app.js', 'catalog-utils.js', 'parameter-utils.js', 'graph-model.js',
-  'graph-layout.js', 'graph-edit.js', 'graph-history.js', 'graph-preview.js', 'styles.css'
+  'graph-layout.js', 'graph-edit.js', 'graph-history.js', 'graph-preview.js', 'onboarding.js', 'styles.css'
 ];
 for (const filename of sharedAssets) fs.copyFileSync(path.join(source, filename), path.join(target, filename));
 
