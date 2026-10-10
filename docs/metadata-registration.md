@@ -25,7 +25,7 @@ foreach (var op in QueryCatalog.StandardOperators)
 var registeredCatalog = catalog.Build();
 ```
 
-The sample catalog includes a Project → Tasks relationship, a decimal Budget field, task Hours and State fields, and a [parameterized nested query](../examples/project-query.json).
+The sample catalog includes a Project → Tasks relationship, a decimal Budget field, task Hours and State fields, and a [parameterized nested query](../examples/project-query.json). Its results are verified against a seeded SQL Server 2022 Testcontainer (matching project IDs 1 and 6).
 
 The browser editor automatically discovers entities, properties, operators and relationships through `GET /api/query/metadata`; no editor JavaScript modifications are needed when changing catalogs. The static GitHub Pages showcase demonstrates the contract but does not run the API or a database.
 
