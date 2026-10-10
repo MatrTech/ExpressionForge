@@ -5,6 +5,10 @@ on:
     branches: [main]
     paths:
       - 'site/**'
+      - 'src/ExpressionForge.Api/wwwroot/**'
+      - 'examples/project-catalog.json'
+      - 'examples/project-query.json'
+      - 'scripts/prepare-blueprint-demo.cjs'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
