@@ -36,6 +36,7 @@ jobs:
           node --check src/ExpressionForge.Api/wwwroot/app.js
           node --check src/ExpressionForge.Api/wwwroot/parameter-utils.js
           node --check src/ExpressionForge.Api/wwwroot/graph-model.js
+          node --check src/ExpressionForge.Api/wwwroot/graph-layout.js
           node --check src/ExpressionForge.Api/wwwroot/graph-preview.js
       - name: Test editor parameter bindings
         run: node --test tests/ExpressionForge.Editor.Tests/*.test.cjs
