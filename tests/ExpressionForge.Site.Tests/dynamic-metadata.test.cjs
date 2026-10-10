@@ -73,3 +73,15 @@ test("authorization documentation does not mistake schema permissions for tenant
   assert.match(docs, /unrestricted/);
   assert.match(docs, /JWT/);
 });
+
+test("multiple metadata source showcase references a validated registry manifest", () => {
+  const site = read("site/index.html");
+  const registry = JSON.parse(read("examples/catalog-registry.json"));
+  assert.match(site, /catalog: customers/);
+  assert.match(site, /catalog: projects/);
+  assert.match(site, /examples\/catalog-registry\.json/);
+  assert.match(site, /docs\/catalog-registry\.md/);
+  assert.equal(registry.defaultCatalog, "customers");
+  assert.deepEqual(registry.catalogs.map(c => c.id), ["customers", "projects"]);
+  assert.deepEqual(registry.catalogs.map(c => c.source), ["demo", "json"]);
+});
