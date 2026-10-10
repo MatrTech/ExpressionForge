@@ -134,6 +134,7 @@
     const title = element('h2', 'ef-tour-title', step.title);
     title.id = 'ef-tour-title';
     const description = element('p', 'ef-tour-description', step.description);
+    description.id = 'ef-tour-description';
     const progress = element('div', 'ef-tour-progress');
     progress.setAttribute('aria-hidden', 'true');
     for (let i = 1; i < STEPS.length; i++)
