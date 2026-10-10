@@ -1,6 +1,6 @@
 # CI/CD and release management
 
-ExpressionForge uses GitHub Actions for pull-request validation, main-branch artifacts, and explicit version-tag releases.
+ExpressionForge uses GitHub Actions for pull-request validation, main-branch artifacts, and verified version-change releases.
 
 ## Continuous integration
 
@@ -21,14 +21,14 @@ Artifacts are retained for 14 days. A CI artifact is **not** a published release
 
 Workflow: [`.github/workflows/release.yml`](../.github/workflows/release.yml)
 
-The workflow runs when a stable version tag such as `v0.2.0` is pushed. It refuses to release unless:
+The workflow runs automatically when `Directory.Build.props` changes on `main`, or when a stable version tag such as `v0.2.0` is pushed manually. For a version-change release, it creates the tag and GitHub Release **only after every release check passes**. It refuses to release unless:
 
-- The tag is exactly `vMAJOR.MINOR.PATCH`.
-- The tagged commit is reachable from `main`.
-- The tag matches `<Version>` in `Directory.Build.props`.
+- The package version is exactly `MAJOR.MINOR.PATCH`.
+- Manual release tags match the package version and point to commits on `main`.
+- Automatic releases run only from a version change merged into `main` and refuse existing tags or releases.
 - Restore, warnings-as-errors build, unit tests, SQL Server integration tests, editor syntax/binding tests, and NuGet pack all succeed.
 
-Only then does the workflow create a GitHub Release with generated release notes, a `.nupkg` file, and a framework-dependent API `.tar.gz` archive.
+Only then does the workflow create a version tag and GitHub Release with curated notes (or generated notes when no version-specific file exists), a `.nupkg` file, and a framework-dependent API `.tar.gz` archive.
 
 **NuGet.org publishing is intentionally not enabled.** No API key, trusted publisher or package ownership has been configured. A GitHub Release is not the same as publishing a package to NuGet.org.
 
@@ -38,8 +38,8 @@ Only then does the workflow create a GitHub Release with generated release notes
 2. Update `Directory.Build.props`, visible editor version, README, and release notes together.
 3. Open a pull request; wait for green CI and review; merge to `main`.
 4. Verify the `main` CI workflow has completed successfully.
-5. Create and push a version tag pointing at the verified `main` commit.
-6. Verify the release workflow and downloaded artifacts before announcing the version.
+5. The version-change push starts the release workflow automatically. Wait for its own unit, SQL Server, editor and website checks to pass.
+6. Verify the published tag, GitHub Release and downloaded artifacts before announcing the version. Manual tag releases remain a fallback.
 
 Never create a version tag for unfinished milestones.
 
