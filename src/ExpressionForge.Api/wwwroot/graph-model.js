@@ -17,13 +17,16 @@
       throw new Error('The query root entity is not available in the selected catalog.');
 
     const counts = new Map();
-    function count(expression) {
+    let totalNodes = 0;
+    function count(expression, depth = 1) {
+      if (depth > 16) throw new Error('Expressions cannot exceed 16 levels of nesting.');
+      if (++totalNodes > 256) throw new Error('Expressions cannot exceed 256 nodes.');
       if (!expression || !supported.has(expression.type)) throw new Error('Unsupported or missing AST expression.');
       if (typeof expression.id === 'string' && expression.id) counts.set(expression.id, (counts.get(expression.id) || 0) + 1);
       if (expression.type === 'group') {
         if (!Array.isArray(expression.expressions)) throw new Error('A group requires an expressions array.');
-        expression.expressions.forEach(count);
-      } else if (expression.type === 'not' || expression.type === 'collectionExpression') count(expression.expression);
+        expression.expressions.forEach(child => count(child, depth + 1));
+      } else if (expression.type === 'not' || expression.type === 'collectionExpression') count(expression.expression, depth + 1);
     }
     count(definition.query);
 
