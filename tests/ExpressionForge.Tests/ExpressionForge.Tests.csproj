@@ -9,5 +9,7 @@
     <PackageReference Include="MSTest.TestFramework" Version="3.6.4" />
     <ProjectReference Include="../../src/ExpressionForge.Core/ExpressionForge.Core.csproj" />
     <None Include="../../site/examples.json" Link="examples.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../examples/project-catalog.json" Link="project-catalog.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../examples/project-query.json" Link="project-query.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
