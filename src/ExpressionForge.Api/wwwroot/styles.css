@@ -125,3 +125,35 @@ button.blueprint-card:hover,button.blueprint-card:focus-visible{outline:2px soli
 .blueprint-inline-inspector>.button.danger{margin-left:auto}
 .editor-modes button:disabled{opacity:.45;cursor:not-allowed}
 @media(max-width:700px){.blueprint-insert-bar .control{max-width:155px}}
+/* First-run walkthrough: a spotlight that never captures canvas pointer gestures. */
+.ef-tour-overlay{position:fixed;inset:0;z-index:1000;pointer-events:none;font-family:inherit}
+.ef-tour-spotlight{position:fixed;pointer-events:none;border:2px solid #98d5ff;border-radius:12px;
+  box-shadow:0 0 0 9999px rgba(5,10,21,.58),0 0 0 5px #99dcff36;
+  transition:left .12s ease,top .12s ease,width .12s ease,height .12s ease}
+.ef-tour-spotlight[hidden]{display:none}
+.ef-tour-panel{position:fixed;width:min(355px,calc(100vw - 28px));z-index:1002;pointer-events:auto;
+  color:#e9f0ff;background:#192741;border:1px solid #7389b8;border-radius:15px;
+  padding:22px;box-shadow:0 22px 70px #000b}
+.ef-tour-welcome{background:rgba(5,10,21,.7)}
+.ef-tour-welcome .ef-tour-panel{left:50%!important;top:50%!important;right:auto!important;
+  transform:translate(-50%,-50%);width:min(440px,calc(100vw - 28px))}
+.ef-tour-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ef-tour-eyebrow{font-size:11px;letter-spacing:.11em;font-weight:750;color:#91cfff}
+.ef-tour-close{border:0;background:transparent;color:#c4cee0;font-size:28px;line-height:1;cursor:pointer}
+.ef-tour-close:hover,.ef-tour-close:focus-visible{color:#fff;outline:2px solid #8ecaff;outline-offset:3px;border-radius:4px}
+.ef-tour-title{font-size:20px;line-height:1.22;margin:12px 0 9px;color:#fff}
+.ef-tour-description{color:#c8d5eb;font-size:13px;line-height:1.65;margin:0}
+.ef-tour-progress{display:flex;gap:6px;margin:20px 0}
+.ef-tour-progress span{height:5px;background:#3e5070;flex:1;border-radius:5px}
+.ef-tour-progress .ef-tour-progress-done{background:#87c8ff}
+.ef-tour-actions{display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap}
+.ef-tour-actions button{min-height:34px;cursor:pointer}
+.ef-tour-actions .ef-tour-dismiss{margin-right:auto}
+@media(max-width:720px){
+  .ef-tour-panel{left:12px!important;right:12px!important;top:auto!important;bottom:12px;
+    width:auto;max-height:min(52vh,370px);overflow-y:auto;transform:none!important;padding:17px}
+  .ef-tour-welcome .ef-tour-panel{left:12px!important;right:12px!important;top:auto!important;
+    bottom:12px;transform:none!important;width:auto}
+  .ef-tour-title{font-size:18px}
+}
+@media(prefers-reduced-motion:reduce){.ef-tour-spotlight{transition:none}}
