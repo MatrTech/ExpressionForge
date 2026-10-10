@@ -412,12 +412,12 @@ function saveCanvasLayout() {
   ExpressionForgeGraphLayout.write(browserStorage(), state.layoutKey, state.graphLayout);
   recordHistory();
 }
-function applyGraphEdit(operation) {
+function applyGraphEdit(operation, keepInspector = false) {
   try {
     state.definition = operation();
     state.pendingSourcePath = null;
     state.pendingSourceEntity = null;
-    state.expandedNodePath = null;
+    if (!keepInspector) state.expandedNodePath = null;
     render();
     show('Query updated. Validate before execution.', 'success');
   } catch (error) { show(error.message, 'error'); }
@@ -452,7 +452,7 @@ function renderGraphPreview() {
       onChange: (path, patch) => applyGraphEdit(() =>
         ExpressionForgeGraphEdit.change(state.definition, state.catalog, path, patch)),
       onValueChange: (path, valuePath, action) => applyGraphEdit(() =>
-        ExpressionForgeGraphEdit.editValue(state.definition, state.catalog, path, valuePath, action)),
+        ExpressionForgeGraphEdit.editValue(state.definition, state.catalog, path, valuePath, action), true),
       onSource: (path, entityId) => {
         state.pendingSourcePath = path;
         state.pendingSourceEntity = entityId || null;
