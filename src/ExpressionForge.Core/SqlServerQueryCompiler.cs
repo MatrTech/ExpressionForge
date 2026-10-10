@@ -67,6 +67,8 @@ public sealed class SqlServerQueryCompiler(QueryCatalog catalog, QueryValidator 
             NumericFieldExpression field => $"CONVERT(decimal(28,6), [{alias}].{Quote(entity.Properties.Single(p => p.Id == field.Field).Id)})",
             NumericLiteralExpression literal => BindNumeric(literal.Value.GetDecimal(), state),
             NumericParameterExpression parameter => BindNumeric(state.Bindings![parameter.Parameter].GetDecimal(), state),
+            StringLengthExpression length => $"CONVERT(decimal(28,6), LEN([{alias}].{Quote(entity.Properties.Single(p => p.Id == length.Field).Id)}))",
+            DateDiffDaysExpression dates => $"CONVERT(decimal(28,6), DATEDIFF(day, [{alias}].{Quote(entity.Properties.Single(p => p.Id == dates.StartField).Id)}, [{alias}].{Quote(entity.Properties.Single(p => p.Id == dates.EndField).Id)}))",
             NumericBinaryExpression binary => BuildNumericBinary(binary, entity, alias, state),
             _ => throw new NotSupportedException("Unsupported numeric value expression.")
         };

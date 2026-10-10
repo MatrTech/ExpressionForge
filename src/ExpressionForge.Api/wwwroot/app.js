@@ -199,6 +199,34 @@ function createNode(expression, entityId, remove, path = '$.query') {
       body.append(fieldRow('Compare', select(
         ['equals','notEquals','greaterThan','greaterThanOrEqual','lessThan','lessThanOrEqual']
           .map(value => ({ value, label: value })), expression.operator, value => modify('numericComparator', value))));
+    } else if (['stringLength', 'dateDiffDays'].includes(arithmetic?.type) &&
+      expression.right?.type === 'numericLiteral') {
+      const props = entity(entityId).properties;
+      function modify(kind, value) {
+        applyGraphEdit(() => ExpressionForgeGraphEdit.change(state.definition, state.catalog, path, { kind, value }));
+      }
+      if (arithmetic.type === 'stringLength') {
+        body.append(fieldRow('Text field', select(props.filter(p => p.dataType === 'string')
+          .map(p => ({ value: p.id, label: p.displayName })), arithmetic.field,
+          value => modify('stringField', value))));
+      } else {
+        const dataType = props.find(p => p.id === arithmetic.startField)?.dataType;
+        const dates = props.filter(p => p.dataType === dataType && ['date','dateTime'].includes(p.dataType));
+        body.append(fieldRow('Start date', select(dates.map(p => ({ value: p.id, label: p.displayName })),
+          arithmetic.startField, value => modify('startDateField', value))));
+        body.append(fieldRow('End date', select(dates.map(p => ({ value: p.id, label: p.displayName })),
+          arithmetic.endField, value => modify('endDateField', value))));
+      }
+      body.append(fieldRow('Compare', select(
+        ['equals','notEquals','greaterThan','greaterThanOrEqual','lessThan','lessThanOrEqual']
+          .map(value => ({ value, label: value })), expression.operator,
+        value => modify('numericComparator', value))));
+      const input = element('input', 'control');
+      input.type = 'number';
+      input.step = 'any';
+      input.value = String(expression.right.value);
+      input.addEventListener('change', () => modify('numericThreshold', Number(input.value)));
+      body.append(fieldRow('Threshold', input));
     } else {
       body.append(element('p', 'empty', 'Advanced numeric AST — edit using JSON.'));
     }

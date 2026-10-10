@@ -9,6 +9,8 @@ namespace ExpressionForge.Core;
 [JsonDerivedType(typeof(NumericLiteralExpression), "numericLiteral")]
 [JsonDerivedType(typeof(NumericParameterExpression), "numericParameter")]
 [JsonDerivedType(typeof(NumericBinaryExpression), "numericBinary")]
+[JsonDerivedType(typeof(StringLengthExpression), "stringLength")]
+[JsonDerivedType(typeof(DateDiffDaysExpression), "dateDiffDays")]
 public abstract record NumericValueExpression;
 
 public sealed record NumericFieldExpression : NumericValueExpression
@@ -32,6 +34,19 @@ public sealed record NumericBinaryExpression : NumericValueExpression
     public required string Operator { get; init; }
     public required NumericValueExpression Left { get; init; }
     public required NumericValueExpression Right { get; init; }
+}
+
+/// <summary>Returns SQL Server LEN(field), excluding trailing U+0020 spaces and preserving NULL.</summary>
+public sealed record StringLengthExpression : NumericValueExpression
+{
+    public required string Field { get; init; }
+}
+
+/// <summary>Returns signed calendar-day boundaries between two date/datetime fields in one scope.</summary>
+public sealed record DateDiffDaysExpression : NumericValueExpression
+{
+    public required string StartField { get; init; }
+    public required string EndField { get; init; }
 }
 
 /// <summary>Compares two numerical expressions in the current entity/collection scope.</summary>

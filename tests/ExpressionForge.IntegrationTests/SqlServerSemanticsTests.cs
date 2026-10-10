@@ -49,7 +49,9 @@ public sealed class SqlServerSemanticsTests
                 Id int NOT NULL PRIMARY KEY,
                 FirstName nvarchar(120) NULL,
                 Age int NOT NULL,
-                IsActive bit NOT NULL
+                IsActive bit NOT NULL,
+                StartedAt date NULL,
+                FinishedAt date NULL
             )
             """,
             """
@@ -93,6 +95,15 @@ public sealed class SqlServerSemanticsTests
                 (1, 1, 160.00, N'Completed'), (2, 1, 25.00, N'Pending'),
                 (3, 2, 15.00, N'Pending'), (4, 3, 250.00, N'Completed'),
                 (5, 4, 120.00, NULL);
+            """,
+            """
+            UPDATE dbo.Customers SET
+                StartedAt = CASE Id
+                    WHEN 1 THEN '2026-01-01' WHEN 2 THEN '2026-01-01'
+                    WHEN 3 THEN '2026-02-10' WHEN 5 THEN '2026-03-01' END,
+                FinishedAt = CASE Id
+                    WHEN 1 THEN '2026-01-11' WHEN 2 THEN '2026-01-03'
+                    WHEN 3 THEN '2026-02-01' WHEN 5 THEN '2026-03-08' END;
             """
         };
 
@@ -170,6 +181,48 @@ public sealed class SqlServerSemanticsTests
         {
             LeftField = "Id", Operator = "greaterThan", RightField = "CustomerId"
         }), "1,2,3,4");
+    }
+
+    [TestMethod]
+    public async Task Execute_StringLength_RespectsNullAndSqlLenSemantics()
+    {
+        await AssertIds(new ArithmeticComparisonExpression
+        {
+            Left = new StringLengthExpression { Field = "FirstName" },
+            Operator = "greaterThanOrEqual",
+            Right = new NumericLiteralExpression { Value = JsonSerializer.SerializeToElement(5m) }
+        }, "3");
+    }
+
+    [TestMethod]
+    public async Task Execute_StringLength_InNestedOrderCollectionUsesChildScope()
+    {
+        await AssertIds(Collection("any", new ArithmeticComparisonExpression
+        {
+            Left = new StringLengthExpression { Field = "Status" },
+            Operator = "greaterThan",
+            Right = new NumericLiteralExpression { Value = JsonSerializer.SerializeToElement(7m) }
+        }), "1,3");
+    }
+
+    [TestMethod]
+    [DataRow("greaterThan", 7, "1")]
+    [DataRow("lessThan", 0, "3")]
+    public async Task Execute_DateDiffDays_HandlesPositiveNegativeAndNullDates(string op, int threshold, string expected)
+    {
+        var baseCatalog = QueryCatalog.CreateDemo();
+        var catalog = new QueryCatalog(baseCatalog.Entities.Select(e => e.Id == "Customer" ? e with
+        {
+            Properties = [.. e.Properties,
+                new PropertyMetadata("StartedAt", "Started", "date", true, []),
+                new PropertyMetadata("FinishedAt", "Finished", "date", true, [])]
+        } : e).ToArray(), baseCatalog.Operators);
+        await AssertIds(new ArithmeticComparisonExpression
+        {
+            Left = new DateDiffDaysExpression { StartField = "StartedAt", EndField = "FinishedAt" },
+            Operator = op,
+            Right = new NumericLiteralExpression { Value = JsonSerializer.SerializeToElement((decimal)threshold) }
+        }, expected, schema: catalog);
     }
 
     [TestMethod]
@@ -424,11 +477,12 @@ public sealed class SqlServerSemanticsTests
     };
 
     private async Task AssertIds(QueryExpression query, string expected,
-        IReadOnlyDictionary<string, JsonElement>? bindings = null)
+        IReadOnlyDictionary<string, JsonElement>? bindings = null, QueryCatalog? schema = null)
     {
         Assert.IsNotNull(_database);
         var definition = new QueryDefinition { Entity = "Customer", Query = query };
-        var compiler = new SqlServerQueryCompiler(_catalog, new QueryValidator(_catalog));
+        var selected = schema ?? _catalog;
+        var compiler = new SqlServerQueryCompiler(selected, new QueryValidator(selected));
         var plan = compiler.Compile(definition, 100, bindings);
         var actual = new List<int>();
 

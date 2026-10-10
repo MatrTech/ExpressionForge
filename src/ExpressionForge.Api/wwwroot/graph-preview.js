@@ -31,6 +31,8 @@
     if (value.type === 'numericField') return String(value.field);
     if (value.type === 'numericLiteral') return String(value.value);
     if (value.type === 'numericParameter') return '@' + String(value.parameter);
+    if (value.type === 'stringLength') return 'Length(' + String(value.field) + ')';
+    if (value.type === 'dateDiffDays') return 'Days(' + String(value.startField) + ', ' + String(value.endField) + ')';
     if (value.type === 'numericBinary')
       return '(' + numericText(value.left) + ' ' + value.operator + ' ' + numericText(value.right) + ')';
     return '?';
@@ -294,6 +296,29 @@
           }
           numericInput('Operand', left.right, 'numericOperand');
           numericInput('Threshold', item.right, 'numericThreshold');
+        } else if (['stringLength', 'dateDiffDays'].includes(left?.type) && item.right?.type === 'numericLiteral') {
+          if (left.type === 'stringLength') {
+            control('Text field', meta.properties.filter(p => p.dataType === 'string')
+              .map(p => [p.id, p.displayName || p.id]), left.field, value => change('stringField', value));
+          } else {
+            const startType = meta.properties.find(p => p.id === left.startField)?.dataType;
+            const dates = meta.properties.filter(p => p.dataType === startType && ['date','dateTime'].includes(p.dataType));
+            control('Start date', dates.map(p => [p.id, p.displayName || p.id]),
+              left.startField, value => change('startDateField', value));
+            control('End date', dates.map(p => [p.id, p.displayName || p.id]),
+              left.endField, value => change('endDateField', value));
+          }
+          control('Compare', ['equals','notEquals','greaterThan','greaterThanOrEqual','lessThan','lessThanOrEqual']
+            .map(op => [op, op]), item.operator, value => change('numericComparator', value));
+          const threshold = el('label', 'blueprint-inspector-field');
+          threshold.append(el('span', '', 'Threshold'));
+          const input = el('input', 'control');
+          input.type = 'number';
+          input.step = 'any';
+          input.value = String(item.right.value);
+          input.addEventListener('change', () => change('numericThreshold', Number(input.value)));
+          threshold.append(input);
+          inspector.append(threshold);
         } else {
           inspector.append(el('p', 'blueprint-hint', 'This nested value expression can be edited in JSON mode.'));
         }

@@ -70,6 +70,21 @@
       return { type: 'expression', field: meta.id, operator,
         ...(nullCheck(operator) ? {} : { value: defaultValue(meta.dataType) }) };
     }
+    if (spec.kind === 'stringLength') {
+      const textField = entity(catalog, entityId).properties?.find(p => p.dataType === 'string');
+      if (!textField) throw Error('No string fields are available in this scope.');
+      return { type: 'arithmeticComparison', left: { type: 'stringLength', field: textField.id },
+        operator: 'greaterThan', right: { type: 'numericLiteral', value: 10 } };
+    }
+    if (spec.kind === 'dateDiffDays') {
+      const dates = entity(catalog, entityId).properties?.filter(p => ['date', 'dateTime'].includes(p.dataType)) || [];
+      const [start, end] = dates.length >= 2 ? [dates[0], dates.find(p => p !== dates[0] &&
+        p.dataType === dates[0].dataType)] : [];
+      if (!start || !end) throw Error('Two same-type date fields are required in this scope.');
+      return { type: 'arithmeticComparison',
+        left: { type: 'dateDiffDays', startField: start.id, endField: end.id },
+        operator: 'greaterThan', right: { type: 'numericLiteral', value: 7 } };
+    }
     if (spec.kind === 'arithmeticComparison') {
       const numeric = entity(catalog, entityId).properties?.find(p =>
         ['integer', 'decimal'].includes(p.dataType));
@@ -106,6 +121,11 @@
     return [
       ...fields.map(p => ({ kind: 'expression', field: p.id, label: p.displayName || p.id })),
       ...(fieldPair(catalog, entityId) ? [{ kind: 'fieldComparison', label: 'Compare two fields' }] : []),
+      ...((meta.properties || []).some(p => p.dataType === 'string') ?
+        [{ kind: 'stringLength', label: 'Text length' }] : []),
+      ...((meta.properties || []).some(p => ['date', 'dateTime'].includes(p.dataType) &&
+        meta.properties.filter(x => x.dataType === p.dataType).length >= 2) ?
+        [{ kind: 'dateDiffDays', label: 'Days between dates' }] : []),
       ...((meta.properties || []).some(p => ['integer', 'decimal'].includes(p.dataType)) ?
         [{ kind: 'arithmeticComparison', label: 'Calculate with fields' }] : []),
       ...(meta.relationships || []).filter(r => entity(catalog, r.targetEntity)?.properties?.some(p => p.operators?.length))
@@ -138,6 +158,31 @@
       node.quantifier = patch.value;
     } else if (node.type === 'arithmeticComparison') {
       const left = node.left;
+      if (['stringLength', 'dateDiffDays'].includes(left?.type)) {
+        const props = entity(catalog, entityId)?.properties || [];
+        const get = name => props.find(p => p.id === name);
+        if (patch.kind === 'numericComparator') {
+          if (!['equals','notEquals','greaterThan','greaterThanOrEqual','lessThan','lessThanOrEqual'].includes(patch.value))
+            throw Error('Unsupported numeric comparison.');
+          node.operator = patch.value;
+        } else if (patch.kind === 'numericThreshold') {
+          if (node.right?.type !== 'numericLiteral' || typeof patch.value !== 'number' ||
+            !Number.isFinite(patch.value) || Math.abs(patch.value) > 1e12 ||
+            Math.round(patch.value * 1e6) / 1e6 !== patch.value)
+            throw Error('Expected a numeric threshold with at most six decimals.');
+          node.right.value = patch.value;
+        } else if (patch.kind === 'stringField' && left.type === 'stringLength') {
+          if (get(patch.value)?.dataType !== 'string') throw Error('String field is not available in this scope.');
+          left.field = patch.value;
+        } else if (['startDateField','endDateField'].includes(patch.kind) && left.type === 'dateDiffDays') {
+          const opposite = get(patch.kind === 'startDateField' ? left.endField : left.startField);
+          if (!opposite || !['date','dateTime'].includes(opposite.dataType) ||
+            get(patch.value)?.dataType !== opposite.dataType)
+            throw Error('Date fields must use identical types within the current scope.');
+          left[patch.kind === 'startDateField' ? 'startField' : 'endField'] = patch.value;
+        } else throw Error('Unsupported function editor change.');
+        return verify(next, catalog);
+      }
       if (left?.type !== 'numericBinary' || left.left?.type !== 'numericField' ||
         !['numericLiteral', 'numericParameter'].includes(left.right?.type) ||
         !['numericLiteral', 'numericParameter'].includes(node.right?.type))

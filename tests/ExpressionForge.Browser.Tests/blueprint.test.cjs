@@ -183,6 +183,29 @@ test('Blueprint edits safe division and runtime numeric bindings without changin
   assert.equal(await page.locator('#binding-divisor').count(), 1);
 });
 
+test('Blueprint adds text-length function and safely updates its threshold', async t => {
+  const page = await openShowcase(t);
+  const before = await definition(page);
+  await page.locator('.blueprint-palette-select').selectOption({ label: 'Text length' });
+  await page.locator('.blueprint-palette').getByRole('button', { name: /Add condition/ }).click();
+  let ast = await definition(page);
+  assert.deepEqual(ast.query.expressions.at(-1).left, { type: 'stringLength', field: 'Name' });
+
+  const card = page.locator('.blueprint-arithmeticComparison').filter({ hasText: 'Length(Name)' }).last();
+  await card.locator('.blueprint-expand').click();
+  const field = page.locator('.blueprint-inline-inspector').getByRole('combobox');
+  assert.ok(await field.count() >= 2);
+  const threshold = page.locator('.blueprint-inline-inspector').getByRole('spinbutton');
+  await threshold.fill('7');
+  await threshold.press('Tab');
+  ast = await definition(page);
+  assert.equal(ast.query.expressions.at(-1).right.value, 7);
+
+  await page.locator('#undo-edit').click();
+  await page.locator('#undo-edit').click();
+  assert.deepEqual((await definition(page)).query, before.query);
+});
+
 test('mobile viewport and keyboard node move remain operable', async t => {
   const page = await openShowcase(t, { width: 390, height: 844 });
   const before = await definition(page);
