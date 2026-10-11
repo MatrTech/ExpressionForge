@@ -237,6 +237,27 @@ test('Blueprint converts a text field safely and composes a nested value tree', 
   assert.deepEqual((await definition(page)).query, original.query);
 });
 
+test('JSON import rejects unsafe numeric literal rounding without changing the current query', async t => {
+  const page = await openShowcase(t);
+  const current = await definition(page);
+  const payload = structuredClone(current);
+  payload.query.expressions.push({
+    type: 'arithmeticComparison',
+    left: { type: 'numericLiteral', value: 1 },
+    operator: 'greaterThan',
+    right: { type: 'numericLiteral', value: 0 }
+  });
+  const json = JSON.stringify(payload).replace('"type":"numericLiteral","value":1',
+    '"type":"numericLiteral","value":1000000000000.000001');
+  assert.ok(json.includes('"value":1000000000000.000001'));
+  await page.locator('#json').fill(json);
+  await page.locator('#load-json').click();
+  assert.match(await page.locator('#message').textContent(), /loses decimal precision/);
+  // The draft textbox contains invalid JSON values, but the canonical query was not changed.
+  await page.locator('#undo-edit').click();
+  assert.deepEqual((await definition(page)).query, current.query);
+});
+
 test('mobile viewport and keyboard node move remain operable', async t => {
   const page = await openShowcase(t, { width: 390, height: 844 });
   const before = await definition(page);
