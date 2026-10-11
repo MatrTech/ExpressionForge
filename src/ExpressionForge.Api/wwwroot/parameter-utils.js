@@ -3,6 +3,13 @@
 // Pure metadata-driven helpers, shared by the editor and its Node.js tests.
 globalThis.ExpressionForgeParameters = (() => {
   const validName = /^[A-Za-z0-9_-]{1,64}$/;
+  const parseScaledDecimal = raw => {
+    const match = /^(-?)(0|[1-9][0-9]*)(?:\.([0-9]{1,6}))?$/.exec(raw);
+    if (!match) return null;
+    const magnitude = BigInt(match[2]) * 1000000n + BigInt((match[3] || '').padEnd(6, '0'));
+    return match[1] ? -magnitude : magnitude;
+  };
+
 
   function discover(definition, catalog) {
     if (!definition?.query || !catalog?.entities) return [];
@@ -90,8 +97,15 @@ globalThis.ExpressionForgeParameters = (() => {
         if (!/^-?(0|[1-9][0-9]*)(\.[0-9]+)?$/.test(raw)) throw new Error(`Parameter "${item.name}" must be a decimal number.`);
         const value = Number(raw);
         if (!Number.isFinite(value)) throw new Error(`Parameter "${item.name}" is out of range.`);
-        if (item.numeric && (Math.abs(value) > 1e12 || !/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]{1,6})?$/.test(raw)))
-          throw new Error(`Numeric parameter "${item.name}" must be within ±1e12 and have at most six decimal places.`);
+        if (item.numeric) {
+          const original = parseScaledDecimal(raw);
+          if (Math.abs(value) > 1e12 || original === null)
+            throw new Error(`Numeric parameter "${item.name}" must be within ±1e12 and have at most six decimal places.`);
+          // A JS Number cannot represent every six-place decimal up to 1e12.
+          // Never silently send a rounded value that differs from what the user entered.
+          if (parseScaledDecimal(value.toString()) !== original)
+            throw new Error(`Numeric parameter "${item.name}" loses decimal precision in this browser.`);
+        }
         parameters[item.name] = value;
       } else {
         throw new Error(`Unsupported parameter type "${item.dataType}".`);
