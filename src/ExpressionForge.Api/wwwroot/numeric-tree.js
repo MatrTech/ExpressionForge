@@ -11,6 +11,21 @@
     'stringLength', 'dateDiffDays', 'tryParseDecimal'];
   const number = x => typeof x === 'number' && Number.isFinite(x) && Math.abs(x) <= 1e12 &&
     Number.isInteger(x * 1000000);
+  const scaledDecimal = source => {
+    const match = /^(-?)(0|[1-9][0-9]*)(?:\.([0-9]{1,6}))?$/.exec(source);
+    if (!match) return null;
+    const scaled = BigInt(match[2]) * 1000000n + BigInt((match[3] || '').padEnd(6, '0'));
+    return match[1] ? -scaled : scaled;
+  };
+  function parseInput(raw) {
+    const exact = scaledDecimal(raw);
+    const value = Number(raw);
+    if (exact === null || !number(value))
+      throw Error('Enter a decimal within ±1e12, with at most six fractional places.');
+    if (scaledDecimal(value.toString()) !== exact)
+      throw Error('This number loses decimal precision in the browser; use a smaller value.');
+    return value;
+  }
 
   function choices(catalog, entityId) {
     const props = catalog?.entities?.find(e => e.id === entityId)?.properties || [];
@@ -130,5 +145,5 @@
     return predicate;
   }
 
-  return Object.freeze({ operators, choices, create, validate, change });
+  return Object.freeze({ operators, choices, create, validate, change, parseInput });
 });
