@@ -82,6 +82,16 @@ function header(node, title, remove) {
   node.append(head);
   return head;
 }
+function changeNumericInput(input, apply) {
+  try {
+    const value = ExpressionForgeNumericTree.parseInput(input.value);
+    input.setCustomValidity('');
+    apply(value);
+  } catch (error) {
+    input.setCustomValidity(error.message);
+    input.reportValidity();
+  }
+}
 function createNode(expression, entityId, remove, path = '$.query') {
   const kind = expression.type === 'collectionExpression' ? 'collection' : ['expression', 'fieldComparison', 'arithmeticComparison'].includes(expression.type) ? 'comparison' : expression.type;
   const node = element('div', `node node-${kind}`);
@@ -192,8 +202,11 @@ function createNode(expression, entityId, remove, path = '$.query') {
         input.type = value.type === 'numericLiteral' ? 'number' : 'text';
         if (input.type === 'number') input.step = 'any';
         input.value = String(value.type === 'numericLiteral' ? value.value : value.parameter);
-        input.addEventListener('change', () => modify(value.type === 'numericLiteral' ? kind : kind + 'Parameter',
-          value.type === 'numericLiteral' ? Number(input.value) : input.value));
+        input.addEventListener('change', () => {
+          const kindToModify = value.type === 'numericLiteral' ? kind : kind + 'Parameter';
+          if (value.type === 'numericLiteral') changeNumericInput(input, number => modify(kindToModify, number));
+          else modify(kindToModify, input.value);
+        });
         body.append(fieldRow(value.type === 'numericLiteral' ? title : title + ' parameter name', input));
       }
       body.append(fieldRow('Compare', select(
@@ -225,7 +238,8 @@ function createNode(expression, entityId, remove, path = '$.query') {
       input.type = 'number';
       input.step = 'any';
       input.value = String(expression.right.value);
-      input.addEventListener('change', () => modify('numericThreshold', Number(input.value)));
+      input.addEventListener('change', () => changeNumericInput(input,
+        value => modify('numericThreshold', value)));
       body.append(fieldRow('Threshold', input));
     } else {
       body.append(element('p', 'empty', 'Advanced numeric AST — edit using JSON.'));
