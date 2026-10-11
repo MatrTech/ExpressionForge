@@ -614,9 +614,18 @@ async function start() {
     state.graphSubgraphs.clear();
     render(); show('');
   });
+  function parseValidatedJson(source) {
+    return JSON.parse(source, function (key, value, context) {
+      if (key !== 'value' || this?.type !== 'numericLiteral' || typeof value !== 'number') return value;
+      if (typeof context?.source !== 'string')
+        throw new Error('This browser cannot verify exact numeric JSON tokens.');
+      ExpressionForgeNumericTree.parseInput(context.source);
+      return value;
+    });
+  }
   $('load-json').addEventListener('click', async () => {
     try {
-      const value = JSON.parse($('json').value);
+      const value = parseValidatedJson($('json').value);
       if (!value || !value.query || !['group', 'expression', 'fieldComparison', 'arithmeticComparison', 'collectionExpression', 'not'].includes(value.query.type))
         throw new Error('Load a supported expression tree.');
       const requested = value.catalogId ?? state.catalog.catalogId;
