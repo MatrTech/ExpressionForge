@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace ExpressionForge.Core;
 
-/// <summary>A numeric value tree. Every node evaluates to decimal(28,6) in SQL Server.</summary>
+/// <summary>SQL Server numeric values use decimal(28,6) at leaves; arithmetic results are safely bounded to decimal(19,6) or NULL.</summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(NumericFieldExpression), "numericField")]
 [JsonDerivedType(typeof(NumericLiteralExpression), "numericLiteral")]

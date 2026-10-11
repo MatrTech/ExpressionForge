@@ -64,7 +64,7 @@ public sealed class SqlServerQueryCompiler(QueryCatalog catalog, QueryValidator 
     private string BuildNumeric(NumericValueExpression value, EntityMetadata entity, string alias, CompilationState state) =>
         value switch
         {
-            NumericFieldExpression field => $"CONVERT(decimal(28,6), [{alias}].{Quote(entity.Properties.Single(p => p.Id == field.Field).Id)})",
+            NumericFieldExpression field => $"TRY_CONVERT(decimal(28,6), [{alias}].{Quote(entity.Properties.Single(p => p.Id == field.Field).Id)})",
             NumericLiteralExpression literal => BindNumeric(literal.Value.GetDecimal(), state),
             NumericParameterExpression parameter => BindNumeric(state.Bindings![parameter.Parameter].GetDecimal(), state),
             StringLengthExpression length => $"CONVERT(decimal(28,6), LEN([{alias}].{Quote(entity.Properties.Single(p => p.Id == length.Field).Id)}))",
@@ -76,20 +76,24 @@ public sealed class SqlServerQueryCompiler(QueryCatalog catalog, QueryValidator 
 
     private string BuildNumericBinary(NumericBinaryExpression binary, EntityMetadata entity, string alias, CompilationState state)
     {
+        // SQL Server multiplies decimal operands BEFORE the outer TRY_CONVERT runs. Working with
+        // decimal(28,6) on both sides can therefore overflow an intermediate decimal(38,s).
+        // Narrow each input safely, widen for the operation, and narrow the result safely.
+        // Every arithmetic node returns decimal(19,6) or NULL. Invalid/out-of-range inputs
+        // and results are NULL rather than failing the entire query.
         var left = BuildNumeric(binary.Left, entity, alias, state);
         var right = BuildNumeric(binary.Right, entity, alias, state);
-        if (binary.Operator == "divide")
+        var safeLeft = $"CONVERT(decimal(38,12), TRY_CONVERT(decimal(19,6), {left}))";
+        var safeRight = $"CONVERT(decimal(38,12), TRY_CONVERT(decimal(19,6), {right}))";
+        var operation = binary.Operator switch
         {
-            // A zero divisor produces NULL; comparisons with NULL do not select the row.
-            // NULLIF protects both literal and parameterized zero denominators, including within collections.
-            return $"({left} / NULLIF({right}, CONVERT(decimal(28,6), 0)))";
-        }
-        var op = binary.Operator switch
-        {
-            "add" => "+", "subtract" => "-", "multiply" => "*",
+            "add" => $"{safeLeft} + {safeRight}",
+            "subtract" => $"{safeLeft} - {safeRight}",
+            "multiply" => $"{safeLeft} * {safeRight}",
+            "divide" => $"{safeLeft} / NULLIF({safeRight}, CONVERT(decimal(38,12), 0))",
             _ => throw new NotSupportedException("Unsupported arithmetic operator.")
         };
-        return $"({left} {op} {right})";
+        return $"TRY_CONVERT(decimal(19,6), ({operation}))";
     }
 
     private static string BindNumeric(decimal value, CompilationState state)

@@ -83,7 +83,9 @@ Example:
 
 **Increment 5 — explicit decimal conversion and composable value editing:** The new `tryParseDecimal` numeric-value node safely converts an approved string field using `TRY_CONVERT(decimal(28,6), column)`. Invalid/NULL text and overflow yield NULL; no user SQL or unregistered identifiers are allowed. Guided and Blueprint can create simple conversion predicates. Blueprint's advanced value-tree inspector supports typed replacement, adding/wrapping arithmetic, changing field/parameter/number inputs, and unwrapping composed expressions. The edit operations work on a single immutable canonical AST and check metadata and numeric restrictions. Node, .NET unit, Chromium, and real SQL Server 2022 tests cover typed scopes, nested expressions, NULL/invalid conversions and undo.
 
-This is a development increment, **not a package release**. Next: explicit conversions for more value types, richer visual value sockets, provider-neutral conversion semantics, and overflow-policy hardening.
+**Increment 6 — final v0.5 correctness gate:** Harden arithmetic to return NULL rather than raise intermediate SQL numeric overflows. Base numeric fields are read with `TRY_CONVERT(decimal(28,6), column)`; every binary arithmetic operation uses guarded `decimal(19,6)` operands, widened intermediates and nullable `decimal(19,6)` results. Check zero division, huge table values, scale rounding, nested NULL propagation, text conversion, and old/new JSON AST contracts on SQL Server 2022 and .NET 10. Reject numeric browser edits, runtime bindings and pasted literal tokens when JavaScript would change decimal precision. The narrower arithmetic working precision is a deliberate behavioral change for previously overflowing cases.
+
+This completes the planned v0.5 feature scope. A formal release remains conditional on the [v0.5 release assessment](releases/v0.5.0-assessment.md); no version or Git tag changes are made by this development PR.
 
 ## Dependencies
 

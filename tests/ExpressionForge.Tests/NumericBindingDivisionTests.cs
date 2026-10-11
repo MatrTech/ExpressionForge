@@ -36,7 +36,7 @@ public sealed class NumericBindingDivisionTests
         var definition = Division(Number(0));
         Assert.IsTrue(Validator.Validate(definition).IsValid);
         var plan = new SqlServerQueryCompiler(Catalog, Validator).Compile(definition);
-        StringAssert.Contains(plan.Sql, " / NULLIF(CONVERT(decimal(28,6), @p0), CONVERT(decimal(28,6), 0))");
+        StringAssert.Contains(plan.Sql, " / NULLIF(CONVERT(decimal(38,12), TRY_CONVERT(decimal(19,6), CONVERT(decimal(28,6), @p0))), CONVERT(decimal(38,12), 0))");
         Assert.AreEqual(3, plan.Parameters.Count);
         Assert.AreEqual(0m, plan.Parameters[1].Value);
         Assert.AreEqual(DbType.Decimal, plan.Parameters[1].DbType);
@@ -52,7 +52,7 @@ public sealed class NumericBindingDivisionTests
         var plan = new SqlServerQueryCompiler(Catalog, Validator).Compile(definition, parameters: bindings);
         Assert.AreEqual(3, plan.Parameters.Count);
         Assert.AreEqual(2m, plan.Parameters[1].Value);
-        StringAssert.Contains(plan.Sql, "NULLIF(CONVERT(decimal(28,6), @p0)");
+        StringAssert.Contains(plan.Sql, "NULLIF(CONVERT(decimal(38,12), TRY_CONVERT(decimal(19,6), CONVERT(decimal(28,6), @p0)))");
         Assert.IsFalse(plan.Sql.Contains("divisor", StringComparison.Ordinal));
         Assert.IsFalse(plan.Sql.Contains(" 2 ", StringComparison.Ordinal));
     }

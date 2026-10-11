@@ -87,3 +87,16 @@ test('numeric value switch back to fixed value removes runtime binding reference
   assert.equal(query.query.expressions[3].left.right.type, 'numericLiteral');
   assert.equal(parameters.discover(query, catalog).filter(x => x.numeric).length, 0);
 });
+
+test('numeric bindings reject precision lost during JavaScript number conversion', () => {
+  const definition = {
+    name: 'amount', dataType: 'decimal', numeric: true, validName: true, conflict: false
+  };
+  const make = raw => parameters.buildBindings([definition], { amount: raw });
+  assert.deepEqual(make('1000000000000'), { amount: 1e12 });
+  assert.deepEqual(make('0.000001'), { amount: 0.000001 });
+  assert.deepEqual(make('1.230000'), { amount: 1.23 });
+  assert.throws(() => make('1000000000000.000001'), /loses decimal precision/);
+  assert.throws(() => make('9999999999.999999'), /loses decimal precision/);
+  assert.throws(() => make('0.0000001'), /six decimal places/);
+});

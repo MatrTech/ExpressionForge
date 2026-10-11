@@ -120,3 +120,12 @@ test('numeric-value tree is mounted in both API editor and static Pages', () => 
   assert.match(demo, /blueprint-assets\/numeric-tree\.js/);
   assert.ok(tree.choices(catalog, 'Project').some(x => x.type === 'tryParseDecimal'));
 });
+
+test('numeric AST form inputs must round trip exactly through browser number representation', () => {
+  assert.equal(tree.parseInput('1000000000000'), 1e12);
+  assert.equal(tree.parseInput('0.000001'), 0.000001);
+  assert.equal(tree.parseInput('2500.125000'), 2500.125);
+  assert.throws(() => tree.parseInput('9999999999.999999'), /loses decimal precision/);
+  assert.throws(() => tree.parseInput('1000000000000.000001'), /loses decimal precision/);
+  assert.throws(() => tree.parseInput('0.0000001'), /six fractional places/);
+});

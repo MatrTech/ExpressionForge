@@ -26,6 +26,17 @@
     node.addEventListener('click', onclick);
     return node;
   }
+  function numericInputValue(input) {
+    try {
+      const value = globalThis.ExpressionForgeNumericTree.parseInput(input.value);
+      input.setCustomValidity('');
+      return { valid: true, value };
+    } catch (error) {
+      input.setCustomValidity(error.message);
+      input.reportValidity();
+      return { valid: false };
+    }
+  }
   function numericText(value) {
     if (!value) return '?';
     if (value.type === 'numericField') return String(value.field);
@@ -111,8 +122,11 @@
       if (type === 'number') input.step = 'any';
       input.setAttribute('aria-label', label + ' ' + path);
       input.value = String(value);
-      input.addEventListener('change', () => options.onValueChange(predicatePath, path,
-        { kind: 'set', property: key, value: type === 'number' ? Number(input.value) : input.value }));
+      input.addEventListener('change', () => {
+        const parsed = type === 'number' ? numericInputValue(input) : { valid: true, value: input.value };
+        if (parsed.valid) options.onValueChange(predicatePath, path,
+          { kind: 'set', property: key, value: parsed.value });
+      });
       row.append(input);
       return row;
     }
@@ -399,8 +413,11 @@
             input.type = value.type === 'numericLiteral' ? 'number' : 'text';
             if (input.type === 'number') input.step = 'any';
             input.value = String(value.type === 'numericLiteral' ? value.value : value.parameter);
-            input.addEventListener('change', () => change(value.type === 'numericLiteral' ? kind : kind + 'Parameter',
-              value.type === 'numericLiteral' ? Number(input.value) : input.value));
+            input.addEventListener('change', () => {
+              const parsed = value.type === 'numericLiteral' ? numericInputValue(input)
+                : { valid: true, value: input.value };
+              if (parsed.valid) change(value.type === 'numericLiteral' ? kind : kind + 'Parameter', parsed.value);
+            });
             row.append(input);
             inspector.append(row);
           }
@@ -426,7 +443,10 @@
           input.type = 'number';
           input.step = 'any';
           input.value = String(item.right.value);
-          input.addEventListener('change', () => change('numericThreshold', Number(input.value)));
+          input.addEventListener('change', () => {
+            const parsed = numericInputValue(input);
+            if (parsed.valid) change('numericThreshold', parsed.value);
+          });
           threshold.append(input);
           inspector.append(threshold);
         } else {

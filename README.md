@@ -10,7 +10,7 @@
 
 ExpressionForge is a .NET 10 metadata-driven expression engine with a Blueprint-inspired web editor. Users compose nested predicates using blocks. The frontend discovers fields, relationships and operators from the backend, then sends a provider-independent JSON expression tree (AST) for validation and SQL Server compilation.
 
-> **Published version 0.2.0 — expression correctness preview.** Development on `main` includes the metadata-driven Blueprint editor and the first v0.5 value-expression increment (field-to-field comparisons). Formal v0.4/v0.5 package releases remain separate from these development merges. The published package version has not been advanced yet.
+> **Published version 0.2.0 — expression correctness preview.** Development on `main` includes the metadata-driven Blueprint editor and five v0.5 value-expression increments, including safe conversions and typed arithmetic. Formal v0.4/v0.5 package releases remain separate from these development merges. The published package version has not been advanced yet.
 
 ## Try it
 
@@ -62,7 +62,7 @@ Do not check connection strings, passwords or SQL Server credentials into source
 
 An expanded example lives in [`examples/customer-query.json`](examples/customer-query.json). The [interactive advanced example gallery](https://matrtech.github.io/ExpressionForge/#examples) provides five complex ASTs with runtime bindings; the same fixtures are validated and executed in CI.
 
-**Explicit conversion and value-tree editing (v0.5 development):** The typed `tryParseDecimal` numeric value converts a metadata-approved string field to `decimal(28,6)` through SQL Server `TRY_CONVERT`. Malformed text, overflow and NULL inputs produce NULL, preserving SQL three-valued comparisons. No arbitrary type names or SQL conversion snippets can be supplied by an AST.
+**Explicit conversion and value-tree editing (v0.5 development):** The typed `tryParseDecimal` numeric value converts a metadata-approved string field to `decimal(28,6)` through SQL Server `TRY_CONVERT`. Malformed text, overflow and NULL inputs produce NULL, preserving SQL three-valued comparisons. No arbitrary type names or SQL conversion snippets can be supplied by an AST. The browser rejects numeric literal edits, runtime bindings, and pasted `numericLiteral` JSON when a JavaScript Number would silently change the submitted decimal; exact decimal evaluation is performed by the .NET backend.
 
 ```json
 {
@@ -115,7 +115,7 @@ Trusted catalog files may register `date` and `dateTime` fields with an empty `o
 }
 ```
 
-All numeric values use explicit SQL Server `decimal(28,6)` arithmetic semantics. Literal values are restricted to ±1e12 with at most six decimal places. Nested values count toward the global 16-level/256-node complexity budgets; column identifiers are resolved from trusted metadata. Division uses `NULLIF(denominator, 0)`: a zero denominator evaluates to SQL `NULL`, so the numeric comparison is UNKNOWN and the row does not satisfy a `WHERE` predicate. A `numericParameter` node names a decimal binding sent separately from the AST; runtime values must be within ±1e12 with at most six fractional digits, and never become SQL identifiers or fragments. Conflicting reuse of a numeric parameter name with an incompatible field type is rejected. Arbitrary SQL and automatic conversions remain out of scope.
+SQL Server uses `decimal(28,6)` for numeric literals, approved numeric fields and parsed text values. Each binary arithmetic operation safely narrows operands to `decimal(19,6)`, widens them for calculation and returns `decimal(19,6)` or SQL `NULL` if the operand/result does not fit, preventing intermediate overflow. Normal decimal operations round to six fractional digits. This protective working limit is intentionally narrower than the leaf type and must be considered when using large financial values. Literal values are restricted to ±1e12 with at most six decimal places. Nested values count toward the global 16-level/256-node complexity budgets; column identifiers are resolved from trusted metadata. Division uses `NULLIF(denominator, 0)`: a zero denominator evaluates to SQL `NULL`, so the numeric comparison is UNKNOWN and the row does not satisfy a `WHERE` predicate. A `numericParameter` node names a decimal binding sent separately from the AST; runtime values must be within ±1e12 with at most six fractional digits, and never become SQL identifiers or fragments. Conflicting reuse of a numeric parameter name with an incompatible field type is rejected. Arbitrary SQL and automatic conversions remain out of scope.
 
 Example of reusable numeric inputs (the binding is supplied at execution time, not saved inside the query):
 
