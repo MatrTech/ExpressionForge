@@ -49,7 +49,7 @@ public sealed class ValueExpressionCompatibilityTests
         using var result = JsonDocument.Parse(serialized);
         Assert.IsTrue(JsonElement.DeepEquals(original.RootElement.GetProperty("definition"), result.RootElement));
         var plan = new SqlServerQueryCompiler(catalog, new QueryValidator(catalog)).Compile(definition, parameters: bindings);
-        Assert.AreEqual(3, plan.Parameters.Count);
+        Assert.AreEqual(5, plan.Parameters.Count);
         StringAssert.Contains(plan.Sql, "EXISTS");
     }
 
