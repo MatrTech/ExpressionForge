@@ -52,7 +52,8 @@ public sealed class SqlServerSemanticsTests
                 IsActive bit NOT NULL,
                 StartedAt date NULL,
                 FinishedAt date NULL,
-                BalanceText nvarchar(64) NULL
+                BalanceText nvarchar(64) NULL,
+                BigAmount decimal(38, 0) NULL
             )
             """,
             """
@@ -99,6 +100,9 @@ public sealed class SqlServerSemanticsTests
                 (5, 4, 120.00, NULL);
             """,
             """
+            UPDATE dbo.Customers SET BigAmount = CASE Id
+                WHEN 1 THEN CONVERT(decimal(38,0), REPLICATE('9', 38))
+                WHEN 2 THEN 100 WHEN 3 THEN 1000000000000 WHEN 5 THEN -100 END;
             UPDATE dbo.Customers SET BalanceText = CASE Id
                 WHEN 1 THEN N'123.50' WHEN 2 THEN N'0'
                 WHEN 3 THEN N'not-a-number' WHEN 5 THEN N'-2.75' END;
@@ -278,6 +282,89 @@ public sealed class SqlServerSemanticsTests
             Right = new NumericLiteralExpression { Value = JsonSerializer.SerializeToElement((decimal)threshold) }
         }, expected, schema: catalog);
     }
+
+    [TestMethod]
+    public async Task Execute_OverwideNumericField_BecomesNullInsteadOfAbortingQuery()
+    {
+        var baseCatalog = QueryCatalog.CreateDemo();
+        var catalog = new QueryCatalog(baseCatalog.Entities.Select(e => e.Id == "Customer" ? e with
+        {
+            Properties = [..e.Properties, new PropertyMetadata("BigAmount", "Big amount", "decimal", true,
+                ["equals", "greaterThan"])]
+        } : e).ToArray(), baseCatalog.Operators);
+        await AssertIds(new ArithmeticComparisonExpression
+        {
+            Left = new NumericFieldExpression { Field = "BigAmount" },
+            Operator = "greaterThan",
+            Right = NumericValue(0)
+        }, "2,3", schema: catalog);
+        await AssertIds(new ArithmeticComparisonExpression
+        {
+            Left = new NumericBinaryExpression
+            {
+                Operator = "multiply",
+                Left = new NumericFieldExpression { Field = "BigAmount" },
+                Right = NumericValue(2)
+            },
+            Operator = "greaterThan", Right = NumericValue(150)
+        }, "2,3", schema: catalog);
+    }
+
+    [TestMethod]
+    [DataRow("multiply", "")]
+    [DataRow("add", "1,2,3,4,5")]
+    [DataRow("divide", "")]
+    public async Task Execute_ExtremeNumericIntermediate_UsesNullInsteadOfOverflow(string operation, string expected)
+    {
+        var rhs = operation == "divide" ? 0.000001m : 1_000_000_000_000m;
+        await AssertIds(new ArithmeticComparisonExpression
+        {
+            Left = new NumericBinaryExpression
+            {
+                Operator = operation,
+                Left = NumericValue(1_000_000_000_000m),
+                Right = NumericValue(rhs)
+            },
+            Operator = "greaterThan", Right = NumericValue(0)
+        }, expected);
+    }
+
+    [TestMethod]
+    public async Task Execute_NestedOverflow_PropagatesNullThroughLaterCalculations()
+    {
+        await AssertIds(new ArithmeticComparisonExpression
+        {
+            Left = new NumericBinaryExpression
+            {
+                Operator = "add",
+                Left = new NumericBinaryExpression
+                {
+                    Operator = "multiply",
+                    Left = NumericValue(1_000_000_000_000m),
+                    Right = NumericValue(1_000_000_000_000m)
+                },
+                Right = NumericValue(1)
+            },
+            Operator = "greaterThan", Right = NumericValue(0)
+        }, "");
+    }
+
+    [TestMethod]
+    public async Task Execute_DivisionProducesDeterministicSixDecimalScale()
+    {
+        await AssertIds(new ArithmeticComparisonExpression
+        {
+            Left = new NumericBinaryExpression
+            {
+                Operator = "divide",
+                Left = NumericValue(1), Right = NumericValue(3)
+            },
+            Operator = "equals", Right = NumericValue(0.333333m)
+        }, "1,2,3,4,5");
+    }
+
+    private static NumericLiteralExpression NumericValue(decimal value) =>
+        new() { Value = JsonSerializer.SerializeToElement(value) };
 
     [TestMethod]
     public async Task Execute_NumericSubtraction_FiltersRootRows()
