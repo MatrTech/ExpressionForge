@@ -253,9 +253,11 @@ test('JSON import rejects unsafe numeric literal rounding without changing the c
   await page.locator('#json').fill(json);
   await page.locator('#load-json').click();
   assert.match(await page.locator('#message').textContent(), /loses decimal precision/);
-  // The draft textbox contains invalid JSON values, but the canonical query was not changed.
-  await page.locator('#undo-edit').click();
-  assert.deepEqual((await definition(page)).query, current.query);
+  // Rejecting the draft leaves editor history untouched; a valid import still works afterward.
+  assert.equal(await page.locator('#undo-edit').isDisabled(), true);
+  await page.locator('#json').fill(JSON.stringify(payload));
+  await page.locator('#load-json').click();
+  assert.equal((await definition(page)).query.expressions.length, current.query.expressions.length + 1);
 });
 
 test('mobile viewport and keyboard node move remain operable', async t => {
